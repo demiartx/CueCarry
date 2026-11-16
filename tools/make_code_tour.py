@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 make_code_tour.py - builds docs/code-tour.html from the section headers in the code.
 
@@ -28,7 +30,7 @@ FILES = [
     ("app/encoder.py", "ffmpeg: find, probe, encode"),
     ("app/gui.py", "The window"),
     ("app/cli.py", "Command line"),
-    ("packaging/rbmp3.spec", "Packaging recipe"),
+    ("packaging/cuecarry.spec", "Packaging recipe"),
 ]
 
 BANNER = re.compile(r"^\s*# =+\s*$")
@@ -122,7 +124,7 @@ def main():
         fid = re.sub(r"\W", "-", rel)
         nav.append(f'<li><a href="#{fid}"><b>{html.escape(rel)}</b></a> <span class="dim">{label}</span><ul>')
         intro_text = "\n".join(intro).strip()
-        doc = re.match(r'^"""(.*?)"""', intro_text, re.S)
+        doc = re.search(r'"""(.*?)"""', intro_text, re.S)
         doc_text = doc.group(1).strip() if doc else ""
         body.append(f'<section class="file" id="{fid}"><h2>{html.escape(rel)}</h2>'
                     f'<p class="dim">{label}</p>')

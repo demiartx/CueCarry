@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 encoder.py - everything that talks to ffmpeg.
 
@@ -68,7 +70,7 @@ def has_mp3_encoder(ffmpeg: str) -> bool:
 def find_ffmpeg(preferred: Optional[str] = None) -> tuple:
     """Returns (path or None, message). Tries: preferred, bundled, PATH."""
     tried = []
-    for cand in [preferred, os.environ.get("RBMP3_FFMPEG"), bundled_ffmpeg(), shutil.which("ffmpeg")]:
+    for cand in [preferred, os.environ.get("CUECARRY_FFMPEG"), bundled_ffmpeg(), shutil.which("ffmpeg")]:
         if cand and cand not in tried:
             tried.append(cand)
             if has_mp3_encoder(cand):

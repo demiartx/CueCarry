@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 cli.py - the command-line front end (same engine as the window).
 
@@ -28,7 +30,7 @@ from .version import APP_NAME, VERSION
 # =============================================================================
 
 def parse_args(argv):
-    ap = argparse.ArgumentParser(prog="rbmp3", description=f"{APP_NAME} {VERSION}: "
+    ap = argparse.ArgumentParser(prog="cuecarry", description=f"{APP_NAME} {VERSION}: "
                                  "make an MP3 copy of a rekordbox library with cues, grids, "
                                  "ratings and playlists.")
     ap.add_argument("xml", help="rekordbox collection XML (File > Export Collection in xml format)")

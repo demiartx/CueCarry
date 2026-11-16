@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 Makes docs/screenshot.png from a made-up demo library (no real files needed).
 Run:  QT_QPA_PLATFORM=offscreen python tools/make_screenshot.py
@@ -45,7 +47,7 @@ for key, tracks in ids.items():
 xml = os.path.join(tempfile.mkdtemp(), "collection.xml")
 ET.ElementTree(root).write(xml, encoding="UTF-8", xml_declaration=True)
 
-os.environ["RBMP3_SETTINGS"] = os.path.join(tempfile.mkdtemp(), "settings.ini")
+os.environ["CUECARRY_SETTINGS"] = os.path.join(tempfile.mkdtemp(), "settings.ini")
 app = QApplication([])
 w = gui.MainWindow()
 w.log_view.clear()

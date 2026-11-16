@@ -1,6 +1,6 @@
-# MP3 Copy for rekordbox
+# CueCarry
 
-A Windows app that makes an MP3 copy of a FLAC, WAV, AIFF or ALAC rekordbox library. Playlists, hot cues, loops, beatgrids, ratings and tags carry over to the copy.
+**CueCarry** is a Windows app for rekordbox users. It makes an MP3 copy of a FLAC, WAV, AIFF or ALAC rekordbox library. Playlists, hot cues, loops, beatgrids, ratings and tags carry over to the copy.
 
 Your original files and your rekordbox collection are never changed. The app writes MP3s into a separate folder, plus a new rekordbox XML file that you import.
 
@@ -44,7 +44,7 @@ Your original files and your rekordbox collection are never changed. The app wri
    - a. In rekordbox, choose **File > Export Collection in xml format**.
    - b. Save it anywhere, for example as `collection.xml`.
 2. **Open it in the app**
-   - a. Run `MP3CopyForRekordbox.exe`.
+   - a. Run `CueCarry.exe`.
    - b. Choose **File > Open collection XML** and pick the file.
    - c. Check **Source folder**. It's detected from the drive that holds most of your tracks. Tracks on other drives are listed as skipped.
    - d. Check **MP3 folder**. The default is the source folder with ` MP3` added.
@@ -114,13 +114,13 @@ Compensate is the default. In one 1,700-track library, 42% of tracks had their f
 The same engine runs without the window:
 
 ```powershell
-rbmp3-cli.exe collection.xml --dry-run
-rbmp3-cli.exe collection.xml --playlist "My Test Playlist"
-rbmp3-cli.exe collection.xml --align --overwrite
-rbmp3-cli.exe --help
+cuecarry-cli.exe collection.xml --dry-run
+cuecarry-cli.exe collection.xml --playlist "My Test Playlist"
+cuecarry-cli.exe collection.xml --align --overwrite
+cuecarry-cli.exe --help
 ```
 
-From source, use `py -m app` in place of `rbmp3-cli.exe`.
+From source, use `py -m app` in place of `cuecarry-cli.exe`.
 
 ## Troubleshooting
 
@@ -141,8 +141,8 @@ From source, use `py -m app` in place of `rbmp3-cli.exe`.
    - a. Double-click `packaging\build_windows.bat`.
    - b. It installs the packages into a private `.venv-build` folder, downloads an LGPL build of ffmpeg (the first time only), checks that it can make MP3s, runs the tests, builds with PyInstaller, and zips the result.
 3. **Find the result**
-   - a. The app: `dist\MP3CopyForRekordbox\MP3CopyForRekordbox.exe`.
-   - b. The zip to share: `dist\MP3CopyForRekordbox-<version>-windows.zip`.
+   - a. The app: `dist\CueCarry\CueCarry.exe`.
+   - b. The zip to share: `dist\CueCarry-<version>-windows.zip`.
 
 ## Running from source
 
@@ -171,6 +171,6 @@ Every source file is split into numbered sections with **What / Why / If it goes
 
 ## Licenses
 
-- **This project:** not chosen yet.
+- **CueCarry:** GNU General Public License v3.0 or later. See [`LICENSE`](LICENSE). You can share and modify it; modified versions you distribute must stay under the GPL with their source available.
 - **Third-party components:** FFmpeg (LGPL build), Qt for Python (LGPL), Python (PSF). See [`LICENSES/THIRD_PARTY_NOTICES.md`](LICENSES/THIRD_PARTY_NOTICES.md).
 - **Trademark:** rekordbox is a trademark of AlphaTheta Corporation. This project is not affiliated with or endorsed by AlphaTheta.

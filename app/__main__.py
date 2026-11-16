@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 Entry point.  `python -m app` opens the window; with arguments it runs the
 command line instead (python -m app collection.xml --compensate).

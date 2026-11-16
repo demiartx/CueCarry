@@ -1,6 +1,6 @@
 # Third-party software in this app
 
-The packaged app (`MP3CopyForRekordbox.exe`) includes these components.
+The packaged app (`CueCarry.exe`) includes these components.
 
 | Component | What it does here | License | Source code |
 |---|---|---|---|

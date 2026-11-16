@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MP3 Copy for rekordbox</title>
+<title>CueCarry</title>
 <style>
 :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --dim:#8b93a7;
         --accent:#4cc38a; --link:#7fb2ff; }
@@ -21,14 +21,14 @@ img { max-width:100%; border:1px solid var(--line); border-radius:8px; display:b
 code { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:0 4px;
        font:14px ui-monospace, Consolas, monospace; }
 </style></head><body><main>
-<h1>🎧 MP3 Copy for rekordbox</h1>
-<p class="dim">Makes an MP3 copy of a FLAC/WAV/AIFF/ALAC rekordbox library, keeping playlists,
+<h1>🎧 CueCarry</h1>
+<p class="dim">For rekordbox: makes an MP3 copy of a FLAC/WAV/AIFF/ALAC library, keeping playlists,
 hot cues, loops, beatgrids and ratings, with cue timing measured in rekordbox to the millisecond.</p>
 
 <div class="grid">
   <div class="card"><h2>🎛️ Use the app</h2>
-    <ol><li>Unzip <code>MP3CopyForRekordbox-…-windows.zip</code>.</li>
-    <li>Run <code>MP3CopyForRekordbox.exe</code>.</li>
+    <ol><li>Unzip <code>CueCarry-…-windows.zip</code>.</li>
+    <li>Run <code>CueCarry.exe</code>.</li>
     <li>Follow <a href="README.md#using-the-app">Using the app</a>.</li></ol></div>
   <div class="card"><h2>🔨 Build the app</h2>
     <ol><li>Install Python: <code>winget install Python.Python.3.12</code></li>
@@ -52,7 +52,8 @@ hot cues, loops, beatgrids and ratings, with cue timing measured in rekordbox to
     <li><code>py -m pytest -q</code> (needs ffmpeg with libmp3lame)</li>
     <li>They check real audio timing, not just the XML.</li></ul></div>
   <div class="card"><h2>⚖️ Licenses</h2>
-    <ul><li><a href="LICENSES/THIRD_PARTY_NOTICES.md">Third-party notices</a> (FFmpeg, Qt, Python)</li>
+    <ul><li>CueCarry: <a href="LICENSE">GPL-3.0 or later</a></li>
+    <li><a href="LICENSES/THIRD_PARTY_NOTICES.md">Third-party notices</a> (FFmpeg, Qt, Python)</li>
     <li>rekordbox is a trademark of AlphaTheta Corporation; this project is not affiliated with it.</li></ul></div>
 </div>
 </main></body></html>

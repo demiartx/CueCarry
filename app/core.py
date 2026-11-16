@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 core.py - the engine: read a rekordbox XML, plan the conversion, write the new XML.
 

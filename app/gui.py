@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 gui.py - the window (Qt, through PySide6).
 
@@ -109,10 +111,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} {VERSION}")
         self.resize(1100, 760)
-        # Saved options live in the registry; tests point RBMP3_SETTINGS at a
+        # Saved options live in the registry; tests point CUECARRY_SETTINGS at a
         # temporary .ini file instead so they never touch the user's settings.
-        ini = os.environ.get("RBMP3_SETTINGS")
-        self.cfg = QSettings(ini, QSettings.IniFormat) if ini else QSettings("rbmp3", APP_NAME)
+        ini = os.environ.get("CUECARRY_SETTINGS")
+        self.cfg = QSettings(ini, QSettings.IniFormat) if ini else QSettings("CueCarry", APP_NAME)
         self.lib: Optional[core.Library] = None
         self.worker: Optional[Worker] = None
         self.bridge = Bridge()
@@ -597,8 +599,9 @@ class MainWindow(QMainWindow):
         QMessageBox.about(self, f"About {APP_NAME}", (
             f"<b>{APP_NAME} {VERSION}</b><br>Makes an MP3 copy of a rekordbox library "
             "with cues, grids, ratings and playlists.<br><br>"
+            "License: GNU GPL v3.0 or later (see LICENSE).<br>"
             "Uses FFmpeg (LGPL build) and Qt for Python (LGPL). Their licenses are in "
-            "the LICENSES folder next to the app.<br>"
+            "the LICENSES folder.<br>"
             "rekordbox is a trademark of AlphaTheta Corporation. This app is not "
             "affiliated with AlphaTheta."))
 

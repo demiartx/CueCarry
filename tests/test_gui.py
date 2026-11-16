@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 Window test: opens the real window off-screen, loads a library, converts one
 playlist through the Start button path, and saves screenshots to docs/.
@@ -38,7 +40,7 @@ def wait_until(cond, timeout=60):
 def test_window_converts_a_playlist(qapp, library, monkeypatch, tmp_path):
     tmp, xml, music = library
     monkeypatch.setattr(QMessageBox, "exec", lambda self: 0)       # no modal popups
-    monkeypatch.setenv("RBMP3_SETTINGS", str(tmp_path / "settings.ini"))
+    monkeypatch.setenv("CUECARRY_SETTINGS", str(tmp_path / "settings.ini"))
     w = gui.MainWindow()
     w.resize(1200, 780)
     w.show()

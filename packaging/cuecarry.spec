@@ -1,10 +1,10 @@
 # PyInstaller build recipe. Run through packaging/build_windows.ps1, or:
-#   pyinstaller --noconfirm --clean packaging/rbmp3.spec
+#   pyinstaller --noconfirm --clean packaging/cuecarry.spec
 #
 # What:  Bundles Python, Qt, the app and ffmpeg into one folder:
-#        dist/MP3CopyForRekordbox/ with two programs that share the same files:
-#          MP3CopyForRekordbox.exe   the window (no console)
-#          rbmp3-cli.exe             the command line (console)
+#        dist/CueCarry/ with two programs that share the same files:
+#          CueCarry.exe   the window (no console)
+#          cuecarry-cli.exe             the command line (console)
 # Why:   A folder build (not one big .exe) starts faster, is flagged less often
 #        by antivirus, and keeps Qt's LGPL libraries replaceable, as the LGPL asks.
 # If it goes wrong: "ffmpeg missing" means packaging/ffmpeg/ is empty; the build
@@ -33,8 +33,8 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-gui_exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="MP3CopyForRekordbox",
+gui_exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="CueCarry",
               console=False, icon=None)
-cli_exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="rbmp3-cli", console=True)
+cli_exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="cuecarry-cli", console=True)
 
-COLLECT(gui_exe, cli_exe, a.binaries, a.datas, name="MP3CopyForRekordbox")
+COLLECT(gui_exe, cli_exe, a.binaries, a.datas, name="CueCarry")

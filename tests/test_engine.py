@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 CueCarry contributors
 """
 End-to-end tests: build a small fake library with every supported file type,
 run the converter, and check the files, the XML and the actual audio timing.
@@ -15,7 +17,7 @@ import pytest
 
 from app import cli, core, encoder
 
-FFMPEG = os.environ.get("RBMP3_FFMPEG") or shutil.which("ffmpeg")
+FFMPEG = os.environ.get("CUECARRY_FFMPEG") or shutil.which("ffmpeg")
 pytestmark = pytest.mark.skipif(not FFMPEG, reason="ffmpeg not installed")
 
 KICK = encoder.CAL_KICK  # 120 BPM kick, first kick at exactly 1.000 s
