@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Tour</title>
+<style>
+:root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --dim:#8b93a7;
+        --what:#4cc38a; --why:#5b9cf5; --wrong:#f0a04b; --k:#c792ea; --s:#c3e88d;
+        --c:#7f8aa3; --n:#f78c6c; --d:#a3b8a0; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg:#f7f7f9; --panel:#fff; --line:#e3e5ea; --text:#1b1e24; --dim:#5f6677;
+  --k:#7c3aed; --s:#2f7d32; --c:#6b7280; --n:#c2410c; --d:#4b6b48; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text);
+       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { display:grid; grid-template-columns: 300px 1fr; }
+nav { position:sticky; top:0; height:100vh; overflow:auto; padding:16px;
+      border-right:1px solid var(--line); background:var(--panel); }
+nav ul { list-style:none; padding-left:12px; margin:4px 0 12px; }
+nav > ul { padding-left:0; }
+nav a { color:var(--text); text-decoration:none; } nav a:hover { text-decoration:underline; }
+main { padding:16px 24px; min-width:0; }
+h1 { margin:0 0 4px; } .dim { color:var(--dim); }
+.file { margin-bottom:40px; }
+.sec { display:grid; grid-template-columns: minmax(260px, 34%) 1fr; gap:16px;
+       border-top:1px solid var(--line); padding:14px 0; }
+.expl { position:sticky; top:12px; align-self:start; }
+.expl h3 { margin:0 0 8px; font-size:16px; }
+.expl p { margin:0 0 8px; }
+.tag { display:inline-block; font-size:12px; font-weight:600; padding:1px 7px;
+       border-radius:10px; color:#0f1115; margin-right:4px; }
+.tag.what { background:var(--what); } .tag.why { background:var(--why); }
+.tag.wrong { background:var(--wrong); }
+.code, .intro { min-width:0; }
+pre { margin:0; padding:10px 12px; background:var(--panel); border:1px solid var(--line);
+      border-radius:8px; white-space:pre-wrap; word-break:break-word;
+      font: 13px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; }
+pre.doc { font-family: inherit; font-size:14px; }
+.row { display:block; padding-left:4.6em; text-indent:-4.6em; }
+.ln { display:inline-block; width:3.6em; margin-right:1em; text-indent:0; color:var(--dim);
+      user-select:none; text-align:right; }
+.whole { border-top:1px solid var(--line); padding-top:14px; }
+.k { color:var(--k); } .s { color:var(--s); } .c { color:var(--c); font-style:italic; }
+.n { color:var(--n); } .d { color:var(--d); }
+@media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } nav { position:static; height:auto; }
+  .sec { grid-template-columns: 1fr; } }
+</style></head><body><div class="wrap">
+<nav><h3 style="margin-top:0">Code tour</h3>
+<p class="dim">Each section: <span class="tag what">What</span>
+<span class="tag why">Why</span> <span class="tag wrong">If it goes wrong</span></p><ul><li><a href="#app-__main__-py"><b>app/__main__.py</b></a> <span class="dim">Entry point</span><ul></ul></li><li><a href="#app-core-py"><b>app/core.py</b></a> <span class="dim">Engine: XML, plan, cue shift</span><ul><li><a href="#app-core-py-1">1. Constants</a></li><li><a href="#app-core-py-2">2. Paths and rekordbox &quot;Location&quot; URLs</a></li><li><a href="#app-core-py-3">3. Reading the collection</a></li><li><a href="#app-core-py-4">4. Settings and the plan</a></li><li><a href="#app-core-py-5">5. Cue shifting</a></li><li><a href="#app-core-py-6">6. Writing the new XML</a></li><li><a href="#app-core-py-7">7. Reading calibration results</a></li></ul></li><li><a href="#app-encoder-py"><b>app/encoder.py</b></a> <span class="dim">ffmpeg: find, probe, encode</span><ul><li><a href="#app-encoder-py-1">1. Finding ffmpeg</a></li><li><a href="#app-encoder-py-2">2. Asking ffmpeg about a file</a></li><li><a href="#app-encoder-py-3">3. Building one ffmpeg command</a></li><li><a href="#app-encoder-py-4">4. Running the whole plan</a></li><li><a href="#app-encoder-py-5">5. Calibration tracks</a></li></ul></li><li><a href="#app-gui-py"><b>app/gui.py</b></a> <span class="dim">The window</span><ul><li><a href="#app-gui-py-1">1. Talking from the worker thread to the window</a></li><li><a href="#app-gui-py-2">2. The main window: layout</a></li><li><a href="#app-gui-py-3">3. Menus</a></li><li><a href="#app-gui-py-4">4. Keeping options in step</a></li><li><a href="#app-gui-py-5">5. Loading the collection and building the plan</a></li><li><a href="#app-gui-py-6">6. Preview, Start, Stop</a></li><li><a href="#app-gui-py-7">7. Tools: calibration and ffmpeg</a></li><li><a href="#app-gui-py-8">8. Small helpers: folders, log, help, saved settings</a></li></ul></li><li><a href="#app-cli-py"><b>app/cli.py</b></a> <span class="dim">Command line</span><ul><li><a href="#app-cli-py-1">1. Flags</a></li><li><a href="#app-cli-py-2">2. Running</a></li></ul></li><li><a href="#packaging-rbmp3-spec"><b>packaging/rbmp3.spec</b></a> <span class="dim">Packaging recipe</span><ul></ul></li></ul></nav>
+<main><h1>Code tour</h1>
+<p class="dim">Generated from the section headers in the code by <code>tools/make_code_tour.py</code>.
+Line numbers match the files.</p>
+<section class="file" id="app-__main__-py"><h2>app/__main__.py</h2><p class="dim">Entry point</p><div class="whole"><pre><span class="row"><span class="ln">1</span><span class="d">&quot;&quot;&quot;
+</span><span class="row"><span class="ln">2</span>Entry point.  `python -m app` opens the window; with arguments it runs the
+</span><span class="row"><span class="ln">3</span>command line instead (python -m app collection.xml --compensate).
+</span><span class="row"><span class="ln">4</span>The packaged .exe starts here too.
+</span><span class="row"><span class="ln">5</span>&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">6</span><span class="k">import</span> sys
+</span><span class="row"><span class="ln">7</span>
+</span><span class="row"><span class="ln">8</span>
+</span><span class="row"><span class="ln">9</span><span class="k">def</span> main() -&gt; int:
+</span><span class="row"><span class="ln">10</span>    <span class="k">if</span> len(sys.argv) &gt; <span class="n">1</span>:
+</span><span class="row"><span class="ln">11</span>        <span class="k">from</span> .cli <span class="k">import</span> main <span class="k">as</span> cli_main
+</span><span class="row"><span class="ln">12</span>        <span class="k">return</span> cli_main()
+</span><span class="row"><span class="ln">13</span>    <span class="k">from</span> .gui <span class="k">import</span> main <span class="k">as</span> gui_main
+</span><span class="row"><span class="ln">14</span>    <span class="k">return</span> gui_main()
+</span><span class="row"><span class="ln">15</span>
+</span><span class="row"><span class="ln">16</span>
+</span><span class="row"><span class="ln">17</span><span class="k">if</span> __name__ == <span class="s">&quot;__main__&quot;</span>:
+</span><span class="row"><span class="ln">18</span>    sys.exit(main())
+</span></pre></div></section><section class="file" id="app-core-py"><h2>app/core.py</h2><p class="dim">Engine: XML, plan, cue shift</p><div class="intro"><pre class="doc">core.py - the engine: read a rekordbox XML, plan the conversion, write the new XML.
+
+This file has no user interface code. Both the window (gui.py) and the command
+line (cli.py) call into it, the way a C++ program might keep its logic in a
+library that two front ends link against.
+
+C++ reading notes
+  - A `@dataclass` is a struct whose constructor is written for you.
+  - `list`, `dict`, `set` are roughly std::vector, std::unordered_map, std::unordered_set.
+  - `Optional[str]` means &quot;a string or None&quot; (None is Python&#x27;s nullptr).
+  - Indentation is the block structure: there are no braces.</pre></div><div class="sec" id="app-core-py-1"><div class="expl"><h3>1. Constants</h3><p><span class="tag what">What</span> File types the app understands, and the MP3 encoder&#x27;s start delay.</p><p><span class="tag why">Why</span> Every decision below keys off these, so they live in one place.</p><p><span class="tag wrong">If it goes wrong</span> a file type missing here is reported as &quot;unsupported&quot; in the preview instead of being converted.</p></div><div class="code"><pre><span class="row"><span class="ln">32</span>
+</span><span class="row"><span class="ln">33</span>PREFIX = <span class="s">&quot;file://localhost&quot;</span>
+</span><span class="row"><span class="ln">34</span>URL_SAFE = <span class="s">&quot;/:,()!;+#=&quot;</span>          <span class="c"># characters rekordbox leaves unencoded in Location</span>
+</span><span class="row"><span class="ln">35</span>
+</span><span class="row"><span class="ln">36</span>LOSSLESS_EXTS = {<span class="s">&quot;.flac&quot;</span>, <span class="s">&quot;.wav&quot;</span>, <span class="s">&quot;.aif&quot;</span>, <span class="s">&quot;.aiff&quot;</span>}   <span class="c"># always converted</span>
+</span><span class="row"><span class="ln">37</span>PROBE_EXTS = {<span class="s">&quot;.m4a&quot;</span>, <span class="s">&quot;.mp4&quot;</span>, <span class="s">&quot;.alac&quot;</span>}               <span class="c"># ALAC is converted, AAC is kept</span>
+</span><span class="row"><span class="ln">38</span>KEEP_EXTS = {<span class="s">&quot;.mp3&quot;</span>}                                 <span class="c"># already MP3: used where it is</span>
+</span><span class="row"><span class="ln">39</span>
+</span><span class="row"><span class="ln">40</span><span class="c"># LAME (the MP3 encoder inside ffmpeg) puts 1105 samples of extra audio at the</span>
+</span><span class="row"><span class="ln">41</span><span class="c"># start of every MP3: 576 samples of encoder delay plus 529 of decoder delay.</span>
+</span><span class="row"><span class="ln">42</span><span class="c"># Measured in rekordbox 7.2: it does not skip them, so MP3 audio plays</span>
+</span><span class="row"><span class="ln">43</span><span class="c"># 25.1 ms (44.1 kHz) / 23.0 ms (48 kHz) later than the source.</span>
+</span><span class="row"><span class="ln">44</span>ENCODER_DELAY_SAMPLES = <span class="n">1105</span>
+</span><span class="row"><span class="ln">45</span>
+</span><span class="row"><span class="ln">46</span>MODES = (<span class="s">&quot;compensate&quot;</span>, <span class="s">&quot;align&quot;</span>, <span class="s">&quot;offset&quot;</span>)
+</span><span class="row"><span class="ln">47</span>MODE_LABELS = {
+</span><span class="row"><span class="ln">48</span>    <span class="s">&quot;compensate&quot;</span>: <span class="s">&quot;Compensate (recommended): keep all audio, shift cues&quot;</span>,
+</span><span class="row"><span class="ln">49</span>    <span class="s">&quot;align&quot;</span>: <span class="s">&quot;Align: trim the delay off the audio&quot;</span>,
+</span><span class="row"><span class="ln">50</span>    <span class="s">&quot;offset&quot;</span>: <span class="s">&quot;Fixed offset: shift cues by a set number of ms&quot;</span>,
+</span><span class="row"><span class="ln">51</span>}
+</span></pre></div></div><div class="sec" id="app-core-py-2"><div class="expl"><h3>2. Paths and rekordbox &quot;Location&quot; URLs</h3><p><span class="tag what">What</span> Convert between rekordbox&#x27;s file://localhost/... URLs and normal paths.</p><p><span class="tag why">Why</span> rekordbox stores every track as a URL; ffmpeg needs a file path.</p><p><span class="tag wrong">If it goes wrong</span> tracks show up as &quot;source file missing&quot;. Check that the XML was exported on the same computer that runs the conversion.</p></div><div class="code"><pre><span class="row"><span class="ln">61</span>
+</span><span class="row"><span class="ln">62</span><span class="k">def</span> loc_to_path(loc: str) -&gt; str:
+</span><span class="row"><span class="ln">63</span>    <span class="d">&quot;&quot;&quot;rekordbox Location URL -&gt; file path with forward slashes.
+</span><span class="row"><span class="ln">64</span>
+</span><span class="row"><span class="ln">65</span>    Windows:  file://localhost/J:/Music/a.flac  -&gt;  J:/Music/a.flac
+</span><span class="row"><span class="ln">66</span>    macOS:    file://localhost/Users/me/a.flac  -&gt;  /Users/me/a.flac
+</span><span class="row"><span class="ln">67</span>    &quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">68</span>    p = loc[len(PREFIX):] <span class="k">if</span> loc.startswith(PREFIX) <span class="k">else</span> loc.replace(<span class="s">&quot;file://&quot;</span>, <span class="s">&quot;&quot;</span>, <span class="n">1</span>)
+</span><span class="row"><span class="ln">69</span>    p = urllib.parse.unquote(p)
+</span><span class="row"><span class="ln">70</span>    <span class="k">if</span> re.match(<span class="s">r&quot;^/[A-Za-z]:/&quot;</span>, p):
+</span><span class="row"><span class="ln">71</span>        p = p[<span class="n">1</span>:]
+</span><span class="row"><span class="ln">72</span>    <span class="k">return</span> p
+</span><span class="row"><span class="ln">73</span>
+</span><span class="row"><span class="ln">74</span>
+</span><span class="row"><span class="ln">75</span><span class="k">def</span> path_to_loc(p: str) -&gt; str:
+</span><span class="row"><span class="ln">76</span>    <span class="d">&quot;&quot;&quot;File path -&gt; rekordbox Location URL (the reverse of loc_to_path).&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">77</span>    p = p.replace(<span class="s">&quot;\\&quot;</span>, <span class="s">&quot;/&quot;</span>)
+</span><span class="row"><span class="ln">78</span>    <span class="k">if</span> <span class="k">not</span> p.startswith(<span class="s">&quot;/&quot;</span>):
+</span><span class="row"><span class="ln">79</span>        p = <span class="s">&quot;/&quot;</span> + p
+</span><span class="row"><span class="ln">80</span>    <span class="k">return</span> PREFIX + urllib.parse.quote(p, safe=URL_SAFE)
+</span><span class="row"><span class="ln">81</span>
+</span><span class="row"><span class="ln">82</span>
+</span><span class="row"><span class="ln">83</span><span class="k">def</span> norm(p: str) -&gt; str:
+</span><span class="row"><span class="ln">84</span>    <span class="k">return</span> p.replace(<span class="s">&quot;\\&quot;</span>, <span class="s">&quot;/&quot;</span>).rstrip(<span class="s">&quot;/&quot;</span>)
+</span><span class="row"><span class="ln">85</span>
+</span><span class="row"><span class="ln">86</span>
+</span><span class="row"><span class="ln">87</span><span class="k">def</span> is_under(path: str, root: str) -&gt; bool:
+</span><span class="row"><span class="ln">88</span>    <span class="d">&quot;&quot;&quot;True if `path` is inside folder `root`. Case-insensitive, like Windows.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">89</span>    a, b = norm(path).lower(), norm(root).lower()
+</span><span class="row"><span class="ln">90</span>    <span class="k">return</span> a == b <span class="k">or</span> a.startswith(b + <span class="s">&quot;/&quot;</span>)
+</span><span class="row"><span class="ln">91</span>
+</span><span class="row"><span class="ln">92</span>
+</span><span class="row"><span class="ln">93</span><span class="k">def</span> common_folder(paths: List[str]) -&gt; str:
+</span><span class="row"><span class="ln">94</span>    <span class="d">&quot;&quot;&quot;Deepest folder that contains every path (case-insensitive compare).&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">95</span>    <span class="k">if</span> <span class="k">not</span> paths:
+</span><span class="row"><span class="ln">96</span>        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">97</span>    split = [norm(posixpath.dirname(norm(p))).split(<span class="s">&quot;/&quot;</span>) <span class="k">for</span> p <span class="k">in</span> paths]
+</span><span class="row"><span class="ln">98</span>    first = split[<span class="n">0</span>]
+</span><span class="row"><span class="ln">99</span>    n = len(first)
+</span><span class="row"><span class="ln">100</span>    <span class="k">for</span> parts <span class="k">in</span> split[<span class="n">1</span>:]:
+</span><span class="row"><span class="ln">101</span>        n = min(n, len(parts))
+</span><span class="row"><span class="ln">102</span>        <span class="k">for</span> i <span class="k">in</span> range(n):
+</span><span class="row"><span class="ln">103</span>            <span class="k">if</span> parts[i].lower() != first[i].lower():
+</span><span class="row"><span class="ln">104</span>                n = i
+</span><span class="row"><span class="ln">105</span>                <span class="k">break</span>
+</span><span class="row"><span class="ln">106</span>    <span class="k">return</span> <span class="s">&quot;/&quot;</span>.join(first[:n]) <span class="k">or</span> <span class="s">&quot;/&quot;</span>
+</span><span class="row"><span class="ln">107</span>
+</span><span class="row"><span class="ln">108</span>
+</span><span class="row"><span class="ln">109</span><span class="k">def</span> _volume(path: str) -&gt; str:
+</span><span class="row"><span class="ln">110</span>    <span class="d">&quot;&quot;&quot;Which drive a path is on: &#x27;j:&#x27; on Windows, &#x27;/volumes/usb&#x27; or &#x27;/users&#x27; on macOS.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">111</span>    parts = norm(path).lower().split(<span class="s">&quot;/&quot;</span>)
+</span><span class="row"><span class="ln">112</span>    <span class="k">if</span> re.match(<span class="s">r&quot;^[a-z]:$&quot;</span>, parts[<span class="n">0</span>]):
+</span><span class="row"><span class="ln">113</span>        <span class="k">return</span> parts[<span class="n">0</span>]
+</span><span class="row"><span class="ln">114</span>    <span class="k">if</span> path.startswith(<span class="s">&quot;//&quot;</span>) <span class="k">and</span> len(parts) &gt; <span class="n">2</span>:
+</span><span class="row"><span class="ln">115</span>        <span class="k">return</span> <span class="s">&quot;//&quot;</span> + parts[<span class="n">2</span>]                       <span class="c"># network share</span>
+</span><span class="row"><span class="ln">116</span>    <span class="k">if</span> len(parts) &gt; <span class="n">2</span> <span class="k">and</span> parts[<span class="n">1</span>] == <span class="s">&quot;volumes&quot;</span>:
+</span><span class="row"><span class="ln">117</span>        <span class="k">return</span> <span class="s">&quot;/volumes/&quot;</span> + parts[<span class="n">2</span>]
+</span><span class="row"><span class="ln">118</span>    <span class="k">return</span> <span class="s">&quot;/&quot;</span> + (parts[<span class="n">1</span>] <span class="k">if</span> len(parts) &gt; <span class="n">1</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">119</span>
+</span><span class="row"><span class="ln">120</span>
+</span><span class="row"><span class="ln">121</span><span class="k">def</span> detect_src_root(paths: List[str]) -&gt; str:
+</span><span class="row"><span class="ln">122</span>    <span class="d">&quot;&quot;&quot;Common folder of the tracks on the drive that holds the most of them.
+</span><span class="row"><span class="ln">123</span>
+</span><span class="row"><span class="ln">124</span>    Tracks on other drives (for example rekordbox&#x27;s sampler sounds on C:) are
+</span><span class="row"><span class="ln">125</span>    then reported as &quot;outside the source folder&quot; instead of forcing the
+</span><span class="row"><span class="ln">126</span>    source folder up to nothing.
+</span><span class="row"><span class="ln">127</span>    &quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">128</span>    <span class="k">if</span> <span class="k">not</span> paths:
+</span><span class="row"><span class="ln">129</span>        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">130</span>    groups: Dict[str, List[str]] = {}
+</span><span class="row"><span class="ln">131</span>    <span class="k">for</span> p <span class="k">in</span> paths:
+</span><span class="row"><span class="ln">132</span>        groups.setdefault(_volume(p), []).append(p)
+</span><span class="row"><span class="ln">133</span>    biggest = max(groups.values(), key=len)
+</span><span class="row"><span class="ln">134</span>    <span class="k">return</span> common_folder(biggest)
+</span><span class="row"><span class="ln">135</span>
+</span><span class="row"><span class="ln">136</span>
+</span><span class="row"><span class="ln">137</span><span class="k">def</span> mp3_path_for(src: str, src_root: str, dst_root: str) -&gt; str:
+</span><span class="row"><span class="ln">138</span>    <span class="d">&quot;&quot;&quot;Same subfolders under dst_root, extension changed to .mp3.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">139</span>    rel = norm(src)[len(norm(src_root)):].lstrip(<span class="s">&quot;/&quot;</span>)
+</span><span class="row"><span class="ln">140</span>    stem, _ = posixpath.splitext(rel)
+</span><span class="row"><span class="ln">141</span>    <span class="k">return</span> posixpath.join(norm(dst_root), stem + <span class="s">&quot;.mp3&quot;</span>)
+</span></pre></div></div><div class="sec" id="app-core-py-3"><div class="expl"><h3>3. Reading the collection</h3><p><span class="tag what">What</span> Load the XML into Track objects and a playlist tree.</p><p><span class="tag why">Why</span> The window shows playlists as checkboxes and the plan needs per-track file paths; parsing once and keeping the elements avoids re-reading.</p><p><span class="tag wrong">If it goes wrong</span> &quot;Not a rekordbox collection XML&quot; means the file has no COLLECTION section. Export it again with File &gt; Export Collection in xml format.</p></div><div class="code"><pre><span class="row"><span class="ln">153</span>
+</span><span class="row"><span class="ln">154</span>@dataclass
+</span><span class="row"><span class="ln">155</span><span class="k">class</span> Track:
+</span><span class="row"><span class="ln">156</span>    track_id: str
+</span><span class="row"><span class="ln">157</span>    path: str                  <span class="c"># source file path</span>
+</span><span class="row"><span class="ln">158</span>    ext: str                   <span class="c"># &quot;.flac&quot;, &quot;.wav&quot;, ...</span>
+</span><span class="row"><span class="ln">159</span>    element: ET.Element        <span class="c"># the original &lt;TRACK&gt; element, kept for copying</span>
+</span><span class="row"><span class="ln">160</span>
+</span><span class="row"><span class="ln">161</span>
+</span><span class="row"><span class="ln">162</span>@dataclass
+</span><span class="row"><span class="ln">163</span><span class="k">class</span> PlaylistNode:
+</span><span class="row"><span class="ln">164</span>    name: str
+</span><span class="row"><span class="ln">165</span>    is_folder: bool
+</span><span class="row"><span class="ln">166</span>    track_ids: List[str] = field(default_factory=list)
+</span><span class="row"><span class="ln">167</span>    children: List[<span class="s">&quot;PlaylistNode&quot;</span>] = field(default_factory=list)
+</span><span class="row"><span class="ln">168</span>
+</span><span class="row"><span class="ln">169</span>
+</span><span class="row"><span class="ln">170</span>@dataclass
+</span><span class="row"><span class="ln">171</span><span class="k">class</span> Library:
+</span><span class="row"><span class="ln">172</span>    xml_path: str
+</span><span class="row"><span class="ln">173</span>    tracks: Dict[str, Track]
+</span><span class="row"><span class="ln">174</span>    playlist_root: PlaylistNode
+</span><span class="row"><span class="ln">175</span>
+</span><span class="row"><span class="ln">176</span>    <span class="k">def</span> playlists(self) -&gt; List[PlaylistNode]:
+</span><span class="row"><span class="ln">177</span>        <span class="d">&quot;&quot;&quot;Every playlist (not folders), depth-first.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">178</span>        out: List[PlaylistNode] = []
+</span><span class="row"><span class="ln">179</span>
+</span><span class="row"><span class="ln">180</span>        <span class="k">def</span> walk(n: PlaylistNode) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">181</span>            <span class="k">for</span> c <span class="k">in</span> n.children:
+</span><span class="row"><span class="ln">182</span>                <span class="k">if</span> c.is_folder:
+</span><span class="row"><span class="ln">183</span>                    walk(c)
+</span><span class="row"><span class="ln">184</span>                <span class="k">else</span>:
+</span><span class="row"><span class="ln">185</span>                    out.append(c)
+</span><span class="row"><span class="ln">186</span>        walk(self.playlist_root)
+</span><span class="row"><span class="ln">187</span>        <span class="k">return</span> out
+</span><span class="row"><span class="ln">188</span>
+</span><span class="row"><span class="ln">189</span>
+</span><span class="row"><span class="ln">190</span><span class="k">def</span> load_library(xml_path: str) -&gt; Library:
+</span><span class="row"><span class="ln">191</span>    root = ET.parse(xml_path).getroot()
+</span><span class="row"><span class="ln">192</span>    col = root.find(<span class="s">&quot;COLLECTION&quot;</span>)
+</span><span class="row"><span class="ln">193</span>    <span class="k">if</span> col <span class="k">is</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">194</span>        <span class="k">raise</span> ValueError(<span class="s">&quot;Not a rekordbox collection XML (no COLLECTION section).&quot;</span>)
+</span><span class="row"><span class="ln">195</span>    tracks: Dict[str, Track] = {}
+</span><span class="row"><span class="ln">196</span>    <span class="k">for</span> el <span class="k">in</span> col.findall(<span class="s">&quot;TRACK&quot;</span>):
+</span><span class="row"><span class="ln">197</span>        loc = el.get(<span class="s">&quot;Location&quot;</span>, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">198</span>        path = loc_to_path(loc)
+</span><span class="row"><span class="ln">199</span>        tracks[el.get(<span class="s">&quot;TrackID&quot;</span>)] = Track(el.get(<span class="s">&quot;TrackID&quot;</span>), path,
+</span><span class="row"><span class="ln">200</span>                                          posixpath.splitext(path)[<span class="n">1</span>].lower(), el)
+</span><span class="row"><span class="ln">201</span>
+</span><span class="row"><span class="ln">202</span>    <span class="k">def</span> build(node: ET.Element) -&gt; PlaylistNode:
+</span><span class="row"><span class="ln">203</span>        <span class="k">if</span> node.get(<span class="s">&quot;Type&quot;</span>) == <span class="s">&quot;0&quot;</span>:
+</span><span class="row"><span class="ln">204</span>            pn = PlaylistNode(node.get(<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;&quot;</span>), <span class="k">True</span>)
+</span><span class="row"><span class="ln">205</span>            pn.children = [build(c) <span class="k">for</span> c <span class="k">in</span> node.findall(<span class="s">&quot;NODE&quot;</span>)]
+</span><span class="row"><span class="ln">206</span>            <span class="k">return</span> pn
+</span><span class="row"><span class="ln">207</span>        <span class="k">return</span> PlaylistNode(node.get(<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;&quot;</span>), <span class="k">False</span>,
+</span><span class="row"><span class="ln">208</span>                            [t.get(<span class="s">&quot;Key&quot;</span>) <span class="k">for</span> t <span class="k">in</span> node.findall(<span class="s">&quot;TRACK&quot;</span>)])
+</span><span class="row"><span class="ln">209</span>
+</span><span class="row"><span class="ln">210</span>    pl = root.find(<span class="s">&quot;PLAYLISTS&quot;</span>)
+</span><span class="row"><span class="ln">211</span>    top = pl.find(<span class="s">&quot;NODE&quot;</span>) <span class="k">if</span> pl <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">212</span>    proot = build(top) <span class="k">if</span> top <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> PlaylistNode(<span class="s">&quot;ROOT&quot;</span>, <span class="k">True</span>)
+</span><span class="row"><span class="ln">213</span>    <span class="k">return</span> Library(xml_path, tracks, proot)
+</span></pre></div></div><div class="sec" id="app-core-py-4"><div class="expl"><h3>4. Settings and the plan</h3><p><span class="tag what">What</span> `Settings` holds every option; `make_plan` decides, per track, whether it is converted, kept as-is, or skipped (with a reason).</p><p><span class="tag why">Why</span> The preview, the conversion and the XML writer all work from the same plan, so what you preview is what runs.</p><p><span class="tag wrong">If it goes wrong</span> tracks &quot;outside the source folder&quot; are skipped. Choose a source folder that contains all of them (for example the drive root).</p></div><div class="code"><pre><span class="row"><span class="ln">225</span>
+</span><span class="row"><span class="ln">226</span>@dataclass
+</span><span class="row"><span class="ln">227</span><span class="k">class</span> Settings:
+</span><span class="row"><span class="ln">228</span>    xml_path: str
+</span><span class="row"><span class="ln">229</span>    src_root: Optional[str] = <span class="k">None</span>       <span class="c"># None = detect automatically</span>
+</span><span class="row"><span class="ln">230</span>    dst_root: Optional[str] = <span class="k">None</span>       <span class="c"># None = &quot;&lt;src_root&gt; MP3&quot;</span>
+</span><span class="row"><span class="ln">231</span>    out_xml: Optional[str] = <span class="k">None</span>        <span class="c"># None = &quot;&lt;dst_root&gt;/rekordbox_mp3.xml&quot;</span>
+</span><span class="row"><span class="ln">232</span>    playlists: Set[str] = field(default_factory=set)   <span class="c"># empty = whole collection</span>
+</span><span class="row"><span class="ln">233</span>    only_playlists: bool = <span class="k">False</span>
+</span><span class="row"><span class="ln">234</span>    mode: str = <span class="s">&quot;compensate&quot;</span>
+</span><span class="row"><span class="ln">235</span>    offset_ms: float = <span class="n">0.0</span>
+</span><span class="row"><span class="ln">236</span>    trim_samples: int = ENCODER_DELAY_SAMPLES
+</span><span class="row"><span class="ln">237</span>    bitrate: str = <span class="s">&quot;320k&quot;</span>
+</span><span class="row"><span class="ln">238</span>    jobs: int = max(<span class="n">1</span>, (os.cpu_count() <span class="k">or</span> <span class="n">2</span>) - <span class="n">1</span>)
+</span><span class="row"><span class="ln">239</span>    overwrite: bool = <span class="k">False</span>
+</span><span class="row"><span class="ln">240</span>    xml_only: bool = <span class="k">False</span>
+</span><span class="row"><span class="ln">241</span>
+</span><span class="row"><span class="ln">242</span>
+</span><span class="row"><span class="ln">243</span>@dataclass
+</span><span class="row"><span class="ln">244</span><span class="k">class</span> Job:
+</span><span class="row"><span class="ln">245</span>    track: Track
+</span><span class="row"><span class="ln">246</span>    dst: str                   <span class="c"># MP3 path</span>
+</span><span class="row"><span class="ln">247</span>    probe: bool                <span class="c"># True for .m4a: convert only if the codec is ALAC</span>
+</span><span class="row"><span class="ln">248</span>
+</span><span class="row"><span class="ln">249</span>
+</span><span class="row"><span class="ln">250</span>@dataclass
+</span><span class="row"><span class="ln">251</span><span class="k">class</span> Plan:
+</span><span class="row"><span class="ln">252</span>    src_root: str
+</span><span class="row"><span class="ln">253</span>    dst_root: str
+</span><span class="row"><span class="ln">254</span>    out_xml: str
+</span><span class="row"><span class="ln">255</span>    jobs: List[Job]
+</span><span class="row"><span class="ln">256</span>    keep: List[Track]          <span class="c"># used at their current location</span>
+</span><span class="row"><span class="ln">257</span>    skipped: List[tuple]       <span class="c"># (Track, reason)</span>
+</span><span class="row"><span class="ln">258</span>
+</span><span class="row"><span class="ln">259</span>    <span class="k">def</span> todo(self, overwrite: bool) -&gt; List[Job]:
+</span><span class="row"><span class="ln">260</span>        <span class="k">return</span> [j <span class="k">for</span> j <span class="k">in</span> self.jobs <span class="k">if</span> overwrite <span class="k">or</span> <span class="k">not</span> os.path.exists(j.dst)]
+</span><span class="row"><span class="ln">261</span>
+</span><span class="row"><span class="ln">262</span>
+</span><span class="row"><span class="ln">263</span><span class="k">def</span> tracks_in_scope(lib: Library, s: Settings) -&gt; Set[str]:
+</span><span class="row"><span class="ln">264</span>    <span class="k">if</span> s.playlists:
+</span><span class="row"><span class="ln">265</span>        ids: Set[str] = set()
+</span><span class="row"><span class="ln">266</span>        <span class="k">for</span> p <span class="k">in</span> lib.playlists():
+</span><span class="row"><span class="ln">267</span>            <span class="k">if</span> p.name <span class="k">in</span> s.playlists:
+</span><span class="row"><span class="ln">268</span>                ids.update(p.track_ids)
+</span><span class="row"><span class="ln">269</span>        <span class="k">return</span> ids
+</span><span class="row"><span class="ln">270</span>    <span class="k">if</span> s.only_playlists:
+</span><span class="row"><span class="ln">271</span>        <span class="k">return</span> {k <span class="k">for</span> p <span class="k">in</span> lib.playlists() <span class="k">for</span> k <span class="k">in</span> p.track_ids}
+</span><span class="row"><span class="ln">272</span>    <span class="k">return</span> set(lib.tracks)
+</span><span class="row"><span class="ln">273</span>
+</span><span class="row"><span class="ln">274</span>
+</span><span class="row"><span class="ln">275</span><span class="k">def</span> make_plan(lib: Library, s: Settings) -&gt; Plan:
+</span><span class="row"><span class="ln">276</span>    convertible = [t <span class="k">for</span> t <span class="k">in</span> lib.tracks.values() <span class="k">if</span> t.ext <span class="k">in</span> LOSSLESS_EXTS | PROBE_EXTS]
+</span><span class="row"><span class="ln">277</span>    <span class="c"># Detect the source folder from the WHOLE collection, not just the chosen</span>
+</span><span class="row"><span class="ln">278</span>    <span class="c"># playlists, so a test run and the full run put files in the same place.</span>
+</span><span class="row"><span class="ln">279</span>    src_root = norm(s.src_root) <span class="k">if</span> s.src_root <span class="k">else</span> detect_src_root([t.path <span class="k">for</span> t <span class="k">in</span> convertible])
+</span><span class="row"><span class="ln">280</span>    dst_root = norm(s.dst_root) <span class="k">if</span> s.dst_root <span class="k">else</span> src_root + <span class="s">&quot; MP3&quot;</span>
+</span><span class="row"><span class="ln">281</span>    <span class="k">if</span> is_under(dst_root, src_root):
+</span><span class="row"><span class="ln">282</span>        <span class="k">raise</span> ValueError(<span class="s">&quot;The MP3 folder must not be inside the source folder.&quot;</span>)
+</span><span class="row"><span class="ln">283</span>    out_xml = s.out_xml <span class="k">or</span> posixpath.join(dst_root, <span class="s">&quot;rekordbox_mp3.xml&quot;</span>)
+</span><span class="row"><span class="ln">284</span>
+</span><span class="row"><span class="ln">285</span>    jobs: List[Job] = []
+</span><span class="row"><span class="ln">286</span>    keep: List[Track] = []
+</span><span class="row"><span class="ln">287</span>    skipped: List[tuple] = []
+</span><span class="row"><span class="ln">288</span>    <span class="k">for</span> tid <span class="k">in</span> tracks_in_scope(lib, s):
+</span><span class="row"><span class="ln">289</span>        t = lib.tracks.get(tid)
+</span><span class="row"><span class="ln">290</span>        <span class="k">if</span> t <span class="k">is</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">291</span>            <span class="k">continue</span>
+</span><span class="row"><span class="ln">292</span>        <span class="k">if</span> t.ext <span class="k">in</span> KEEP_EXTS:
+</span><span class="row"><span class="ln">293</span>            keep.append(t)
+</span><span class="row"><span class="ln">294</span>        <span class="k">elif</span> t.ext <span class="k">in</span> LOSSLESS_EXTS | PROBE_EXTS:
+</span><span class="row"><span class="ln">295</span>            <span class="k">if</span> is_under(t.path, src_root):
+</span><span class="row"><span class="ln">296</span>                jobs.append(Job(t, mp3_path_for(t.path, src_root, dst_root), t.ext <span class="k">in</span> PROBE_EXTS))
+</span><span class="row"><span class="ln">297</span>            <span class="k">else</span>:
+</span><span class="row"><span class="ln">298</span>                skipped.append((t, <span class="s">&quot;outside the source folder&quot;</span>))
+</span><span class="row"><span class="ln">299</span>        <span class="k">else</span>:
+</span><span class="row"><span class="ln">300</span>            skipped.append((t, f&quot;unsupported file type ({t.ext <span class="k">or</span> <span class="s">&#x27;none&#x27;</span>})&quot;))
+</span><span class="row"><span class="ln">301</span>    jobs.sort(key=<span class="k">lambda</span> j: j.track.path.lower())
+</span><span class="row"><span class="ln">302</span>    <span class="k">return</span> Plan(src_root, dst_root, out_xml, jobs, keep, skipped)
+</span></pre></div></div><div class="sec" id="app-core-py-5"><div class="expl"><h3>5. Cue shifting</h3><p><span class="tag what">What</span> How far to move every cue, loop and grid point for one track.</p><p><span class="tag why">Why</span> The MP3 starts later than the source by the encoder delay (section 1). &quot;compensate&quot; removes the header so every player sees that same delay, then shifts by exactly 1105 samples at the MP3&#x27;s sample rate.</p><p><span class="tag wrong">If it goes wrong</span> cues land early or late by ~25 ms. Run Tools &gt; Make calibration tracks to measure what your rekordbox does.</p></div><div class="code"><pre><span class="row"><span class="ln">314</span>
+</span><span class="row"><span class="ln">315</span><span class="k">def</span> mp3_sample_rate(source_rate: int) -&gt; int:
+</span><span class="row"><span class="ln">316</span>    <span class="d">&quot;&quot;&quot;MP3 tops out at 48 kHz; higher rates are resampled (see encoder.py).&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">317</span>    <span class="k">if</span> source_rate &lt;= <span class="n">48000</span>:
+</span><span class="row"><span class="ln">318</span>        <span class="k">return</span> source_rate
+</span><span class="row"><span class="ln">319</span>    <span class="k">return</span> <span class="n">44100</span> <span class="k">if</span> source_rate % <span class="n">44100</span> == <span class="n">0</span> <span class="k">else</span> <span class="n">48000</span>
+</span><span class="row"><span class="ln">320</span>
+</span><span class="row"><span class="ln">321</span>
+</span><span class="row"><span class="ln">322</span><span class="k">def</span> cue_shift_seconds(track: Track, s: Settings) -&gt; float:
+</span><span class="row"><span class="ln">323</span>    <span class="k">if</span> s.mode == <span class="s">&quot;compensate&quot;</span>:
+</span><span class="row"><span class="ln">324</span>        rate = mp3_sample_rate(int(float(track.element.get(<span class="s">&quot;SampleRate&quot;</span>) <span class="k">or</span> <span class="n">44100</span>)))
+</span><span class="row"><span class="ln">325</span>        <span class="k">return</span> ENCODER_DELAY_SAMPLES / rate
+</span><span class="row"><span class="ln">326</span>    <span class="k">if</span> s.mode == <span class="s">&quot;offset&quot;</span>:
+</span><span class="row"><span class="ln">327</span>        <span class="k">return</span> s.offset_ms / <span class="n">1000.0</span>
+</span><span class="row"><span class="ln">328</span>    <span class="k">return</span> <span class="n">0.0</span>  <span class="c"># align: the audio itself is moved, cues stay put</span>
+</span></pre></div></div><div class="sec" id="app-core-py-6"><div class="expl"><h3>6. Writing the new XML</h3><p><span class="tag what">What</span> Build a rekordbox XML with only the MP3 tracks, every playlist copied into a folder named &quot;MP3&quot;, and cues shifted.</p><p><span class="tag why">Why</span> rekordbox imports tracks with their cues and grid from an XML; this is the only supported way to hand it that data.</p><p><span class="tag wrong">If it goes wrong</span> if rekordbox already has these MP3s, it can keep the old cue data. Remove them from the Collection, then import again.</p></div><div class="code"><pre><span class="row"><span class="ln">340</span>
+</span><span class="row"><span class="ln">341</span><span class="k">def</span> _shift(el: ET.Element, attr: str, sec: float) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">342</span>    v = el.get(attr)
+</span><span class="row"><span class="ln">343</span>    <span class="k">if</span> v <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">344</span>        el.set(attr, f&quot;{max(<span class="n">0.0</span>, float(v) + sec):.3f}&quot;)
+</span><span class="row"><span class="ln">345</span>
+</span><span class="row"><span class="ln">346</span>
+</span><span class="row"><span class="ln">347</span><span class="k">def</span> mp3_track_element(t: Track, mp3_path: str, shift: float, bitrate_kbps: int) -&gt; ET.Element:
+</span><span class="row"><span class="ln">348</span>    el = ET.Element(<span class="s">&quot;TRACK&quot;</span>, dict(t.element.attrib))
+</span><span class="row"><span class="ln">349</span>    el.set(<span class="s">&quot;Kind&quot;</span>, <span class="s">&quot;MP3 File&quot;</span>)
+</span><span class="row"><span class="ln">350</span>    el.set(<span class="s">&quot;Location&quot;</span>, path_to_loc(mp3_path))
+</span><span class="row"><span class="ln">351</span>    el.set(<span class="s">&quot;BitRate&quot;</span>, str(bitrate_kbps))
+</span><span class="row"><span class="ln">352</span>    el.set(<span class="s">&quot;Size&quot;</span>, str(os.path.getsize(mp3_path)))
+</span><span class="row"><span class="ln">353</span>    rate = int(float(t.element.get(<span class="s">&quot;SampleRate&quot;</span>) <span class="k">or</span> <span class="n">44100</span>))
+</span><span class="row"><span class="ln">354</span>    el.set(<span class="s">&quot;SampleRate&quot;</span>, str(mp3_sample_rate(rate)))
+</span><span class="row"><span class="ln">355</span>    <span class="k">for</span> child <span class="k">in</span> t.element:
+</span><span class="row"><span class="ln">356</span>        c = ET.SubElement(el, child.tag, dict(child.attrib))
+</span><span class="row"><span class="ln">357</span>        <span class="k">if</span> shift:
+</span><span class="row"><span class="ln">358</span>            <span class="k">if</span> child.tag == <span class="s">&quot;TEMPO&quot;</span>:
+</span><span class="row"><span class="ln">359</span>                _shift(c, <span class="s">&quot;Inizio&quot;</span>, shift)
+</span><span class="row"><span class="ln">360</span>            <span class="k">elif</span> child.tag == <span class="s">&quot;POSITION_MARK&quot;</span>:
+</span><span class="row"><span class="ln">361</span>                _shift(c, <span class="s">&quot;Start&quot;</span>, shift)
+</span><span class="row"><span class="ln">362</span>                _shift(c, <span class="s">&quot;End&quot;</span>, shift)
+</span><span class="row"><span class="ln">363</span>    <span class="k">return</span> el
+</span><span class="row"><span class="ln">364</span>
+</span><span class="row"><span class="ln">365</span>
+</span><span class="row"><span class="ln">366</span><span class="k">def</span> _copy_tree(node: PlaylistNode, keep_ids: Set[str], wanted: Set[str]) -&gt; List[ET.Element]:
+</span><span class="row"><span class="ln">367</span>    out: List[ET.Element] = []
+</span><span class="row"><span class="ln">368</span>    <span class="k">for</span> n <span class="k">in</span> node.children:
+</span><span class="row"><span class="ln">369</span>        <span class="k">if</span> n.is_folder:
+</span><span class="row"><span class="ln">370</span>            kids = _copy_tree(n, keep_ids, wanted)
+</span><span class="row"><span class="ln">371</span>            <span class="k">if</span> kids:
+</span><span class="row"><span class="ln">372</span>                f = ET.Element(<span class="s">&quot;NODE&quot;</span>, {<span class="s">&quot;Type&quot;</span>: <span class="s">&quot;0&quot;</span>, <span class="s">&quot;Name&quot;</span>: n.name, <span class="s">&quot;Count&quot;</span>: str(len(kids))})
+</span><span class="row"><span class="ln">373</span>                f.extend(kids)
+</span><span class="row"><span class="ln">374</span>                out.append(f)
+</span><span class="row"><span class="ln">375</span>        <span class="k">elif</span> <span class="k">not</span> wanted <span class="k">or</span> n.name <span class="k">in</span> wanted:
+</span><span class="row"><span class="ln">376</span>            keys = [k <span class="k">for</span> k <span class="k">in</span> n.track_ids <span class="k">if</span> k <span class="k">in</span> keep_ids]
+</span><span class="row"><span class="ln">377</span>            p = ET.Element(<span class="s">&quot;NODE&quot;</span>, {<span class="s">&quot;Name&quot;</span>: n.name + <span class="s">&quot; (MP3)&quot;</span>, <span class="s">&quot;Type&quot;</span>: <span class="s">&quot;1&quot;</span>,
+</span><span class="row"><span class="ln">378</span>                                    <span class="s">&quot;KeyType&quot;</span>: <span class="s">&quot;0&quot;</span>, <span class="s">&quot;Entries&quot;</span>: str(len(keys))})
+</span><span class="row"><span class="ln">379</span>            <span class="k">for</span> k <span class="k">in</span> keys:
+</span><span class="row"><span class="ln">380</span>                ET.SubElement(p, <span class="s">&quot;TRACK&quot;</span>, {<span class="s">&quot;Key&quot;</span>: k})
+</span><span class="row"><span class="ln">381</span>            out.append(p)
+</span><span class="row"><span class="ln">382</span>    <span class="k">return</span> out
+</span><span class="row"><span class="ln">383</span>
+</span><span class="row"><span class="ln">384</span>
+</span><span class="row"><span class="ln">385</span><span class="k">def</span> write_xml(lib: Library, plan: Plan, s: Settings,
+</span><span class="row"><span class="ln">386</span>              is_alac: Callable[[str], bool]) -&gt; tuple:
+</span><span class="row"><span class="ln">387</span>    <span class="d">&quot;&quot;&quot;Write plan.out_xml. Returns (number of tracks, number of playlists).
+</span><span class="row"><span class="ln">388</span>
+</span><span class="row"><span class="ln">389</span>    is_alac(path) decides .m4a files that were never converted: ALAC files
+</span><span class="row"><span class="ln">390</span>    without an MP3 yet are left out; AAC files are kept as they are.
+</span><span class="row"><span class="ln">391</span>    &quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">392</span>    kbps = int(re.sub(<span class="s">r&quot;\D&quot;</span>, <span class="s">&quot;&quot;</span>, s.bitrate) <span class="k">or</span> <span class="n">320</span>)
+</span><span class="row"><span class="ln">393</span>    tracks: List[ET.Element] = []
+</span><span class="row"><span class="ln">394</span>    ids: Set[str] = set()
+</span><span class="row"><span class="ln">395</span>    <span class="k">for</span> j <span class="k">in</span> plan.jobs:
+</span><span class="row"><span class="ln">396</span>        <span class="k">if</span> os.path.exists(j.dst):
+</span><span class="row"><span class="ln">397</span>            tracks.append(mp3_track_element(j.track, j.dst, cue_shift_seconds(j.track, s), kbps))
+</span><span class="row"><span class="ln">398</span>            ids.add(j.track.track_id)
+</span><span class="row"><span class="ln">399</span>        <span class="k">elif</span> j.probe <span class="k">and</span> os.path.exists(j.track.path) <span class="k">and</span> <span class="k">not</span> is_alac(j.track.path):
+</span><span class="row"><span class="ln">400</span>            tracks.append(j.track.element)     <span class="c"># AAC: keep where it is</span>
+</span><span class="row"><span class="ln">401</span>            ids.add(j.track.track_id)
+</span><span class="row"><span class="ln">402</span>    <span class="k">for</span> t <span class="k">in</span> plan.keep:
+</span><span class="row"><span class="ln">403</span>        tracks.append(t.element)
+</span><span class="row"><span class="ln">404</span>        ids.add(t.track_id)
+</span><span class="row"><span class="ln">405</span>
+</span><span class="row"><span class="ln">406</span>    out = ET.Element(<span class="s">&quot;DJ_PLAYLISTS&quot;</span>, {<span class="s">&quot;Version&quot;</span>: <span class="s">&quot;1.0.0&quot;</span>})
+</span><span class="row"><span class="ln">407</span>    ET.SubElement(out, <span class="s">&quot;PRODUCT&quot;</span>, {<span class="s">&quot;Name&quot;</span>: <span class="s">&quot;rekordbox&quot;</span>, <span class="s">&quot;Version&quot;</span>: <span class="s">&quot;7&quot;</span>, <span class="s">&quot;Company&quot;</span>: <span class="s">&quot;AlphaTheta&quot;</span>})
+</span><span class="row"><span class="ln">408</span>    col = ET.SubElement(out, <span class="s">&quot;COLLECTION&quot;</span>, {<span class="s">&quot;Entries&quot;</span>: str(len(tracks))})
+</span><span class="row"><span class="ln">409</span>    col.extend(tracks)
+</span><span class="row"><span class="ln">410</span>    pls = ET.SubElement(out, <span class="s">&quot;PLAYLISTS&quot;</span>)
+</span><span class="row"><span class="ln">411</span>    root = ET.SubElement(pls, <span class="s">&quot;NODE&quot;</span>, {<span class="s">&quot;Type&quot;</span>: <span class="s">&quot;0&quot;</span>, <span class="s">&quot;Name&quot;</span>: <span class="s">&quot;ROOT&quot;</span>, <span class="s">&quot;Count&quot;</span>: <span class="s">&quot;1&quot;</span>})
+</span><span class="row"><span class="ln">412</span>    kids = _copy_tree(lib.playlist_root, ids, s.playlists)
+</span><span class="row"><span class="ln">413</span>    folder = ET.SubElement(root, <span class="s">&quot;NODE&quot;</span>, {<span class="s">&quot;Type&quot;</span>: <span class="s">&quot;0&quot;</span>, <span class="s">&quot;Name&quot;</span>: <span class="s">&quot;MP3&quot;</span>, <span class="s">&quot;Count&quot;</span>: str(len(kids))})
+</span><span class="row"><span class="ln">414</span>    folder.extend(kids)
+</span><span class="row"><span class="ln">415</span>    ET.indent(out)
+</span><span class="row"><span class="ln">416</span>    os.makedirs(os.path.dirname(plan.out_xml) <span class="k">or</span> <span class="s">&quot;.&quot;</span>, exist_ok=<span class="k">True</span>)
+</span><span class="row"><span class="ln">417</span>    ET.ElementTree(out).write(plan.out_xml, encoding=<span class="s">&quot;UTF-8&quot;</span>, xml_declaration=<span class="k">True</span>)
+</span><span class="row"><span class="ln">418</span>    <span class="k">return</span> len(tracks), _count_playlists(kids)
+</span><span class="row"><span class="ln">419</span>
+</span><span class="row"><span class="ln">420</span>
+</span><span class="row"><span class="ln">421</span><span class="k">def</span> _count_playlists(nodes: List[ET.Element]) -&gt; int:
+</span><span class="row"><span class="ln">422</span>    <span class="k">return</span> sum(_count_playlists(list(n)) <span class="k">if</span> n.get(<span class="s">&quot;Type&quot;</span>) == <span class="s">&quot;0&quot;</span> <span class="k">else</span> <span class="n">1</span> <span class="k">for</span> n <span class="k">in</span> nodes)
+</span></pre></div></div><div class="sec" id="app-core-py-7"><div class="expl"><h3>7. Reading calibration results</h3><p><span class="tag what">What</span> Find the four calibration tracks in an exported collection XML and report how far each one&#x27;s beat grid sits from the FLAC reference.</p><p><span class="tag why">Why</span> rekordbox&#x27;s grid start (TEMPO Inizio) is precise to 1 ms, which beats judging waveforms by eye.</p><p><span class="tag wrong">If it goes wrong</span> &quot;not found&quot; means rekordbox hasn&#x27;t analyzed the tracks yet, or the collection was exported before they were imported.</p></div><div class="code"><pre><span class="row"><span class="ln">434</span>
+</span><span class="row"><span class="ln">435</span><span class="k">def</span> read_calibration(xml_path: str) -&gt; List[tuple]:
+</span><span class="row"><span class="ln">436</span>    <span class="d">&quot;&quot;&quot;Returns [(title, grid start in s or None, shift vs reference in ms or None)].&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">437</span>    lib = load_library(xml_path)
+</span><span class="row"><span class="ln">438</span>    found: Dict[str, Optional[float]] = {}
+</span><span class="row"><span class="ln">439</span>    <span class="k">for</span> t <span class="k">in</span> lib.tracks.values():
+</span><span class="row"><span class="ln">440</span>        title = t.element.get(<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">441</span>        <span class="k">if</span> title.startswith(<span class="s">&quot;CAL &quot;</span>) <span class="k">and</span> t.element.get(<span class="s">&quot;Artist&quot;</span>) == <span class="s">&quot;Calibration&quot;</span>:
+</span><span class="row"><span class="ln">442</span>            tempo = t.element.find(<span class="s">&quot;TEMPO&quot;</span>)
+</span><span class="row"><span class="ln">443</span>            found[title] = float(tempo.get(<span class="s">&quot;Inizio&quot;</span>)) <span class="k">if</span> tempo <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">444</span>    ref = next((v <span class="k">for</span> k, v <span class="k">in</span> found.items() <span class="k">if</span> k.startswith(<span class="s">&quot;CAL A&quot;</span>)), <span class="k">None</span>)
+</span><span class="row"><span class="ln">445</span>    rows = []
+</span><span class="row"><span class="ln">446</span>    <span class="k">for</span> title <span class="k">in</span> sorted(found):
+</span><span class="row"><span class="ln">447</span>        v = found[title]
+</span><span class="row"><span class="ln">448</span>        shift = <span class="k">None</span>
+</span><span class="row"><span class="ln">449</span>        <span class="k">if</span> v <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> ref <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">450</span>            d = (v - ref) % <span class="n">0.5</span>          <span class="c"># beats are 0.5 s apart at 120 BPM</span>
+</span><span class="row"><span class="ln">451</span>            <span class="k">if</span> d &gt; <span class="n">0.25</span>:
+</span><span class="row"><span class="ln">452</span>                d -= <span class="n">0.5</span>
+</span><span class="row"><span class="ln">453</span>            shift = round(d * <span class="n">1000</span>, <span class="n">1</span>)
+</span><span class="row"><span class="ln">454</span>        rows.append((title, v, shift))
+</span><span class="row"><span class="ln">455</span>    <span class="k">return</span> rows
+</span></pre></div></div></section><section class="file" id="app-encoder-py"><h2>app/encoder.py</h2><p class="dim">ffmpeg: find, probe, encode</p><div class="intro"><pre class="doc">encoder.py - everything that talks to ffmpeg.
+
+ffmpeg is a separate program (ffmpeg.exe). This file finds it, checks that it
+can make MP3s, asks it what codec an .m4a file holds, and runs one ffmpeg
+process per track, several at a time.
+
+C++ reading notes
+  - `subprocess.Popen` is like CreateProcess: it starts ffmpeg and gives back a
+    handle; `.communicate()` waits for it and collects its output.
+  - `ThreadPoolExecutor` is a fixed pool of worker threads, like a std::thread
+    pool pulling tasks off a queue.
+  - `threading.Event` is a thread-safe bool flag (here: &quot;Stop was pressed&quot;).</pre></div><div class="sec" id="app-encoder-py-1"><div class="expl"><h3>1. Finding ffmpeg</h3><p><span class="tag what">What</span> Look for ffmpeg next to the app first (the bundled copy), then on PATH.</p><p><span class="tag why">Why</span> The packaged app ships its own ffmpeg, so users install nothing. When run from source, a full ffmpeg on PATH works too.</p><p><span class="tag wrong">If it goes wrong</span> &quot;ffmpeg has no MP3 encoder&quot; means a stripped-down copy was found (for example a Microsoft Store alias in ...\WindowsApps). Pick a full build in Tools &gt; Choose ffmpeg.</p></div><div class="code"><pre><span class="row"><span class="ln">43</span>
+</span><span class="row"><span class="ln">44</span><span class="k">def</span> bundled_ffmpeg() -&gt; Optional[str]:
+</span><span class="row"><span class="ln">45</span>    <span class="d">&quot;&quot;&quot;Path of the ffmpeg shipped inside the packaged app, if any.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">46</span>    exe = <span class="s">&quot;ffmpeg.exe&quot;</span> <span class="k">if</span> sys.platform == <span class="s">&quot;win32&quot;</span> <span class="k">else</span> <span class="s">&quot;ffmpeg&quot;</span>
+</span><span class="row"><span class="ln">47</span>    bases = []
+</span><span class="row"><span class="ln">48</span>    <span class="k">if</span> getattr(sys, <span class="s">&quot;frozen&quot;</span>, <span class="k">False</span>):                 <span class="c"># running as the packaged app</span>
+</span><span class="row"><span class="ln">49</span>        bases.append(getattr(sys, <span class="s">&quot;_MEIPASS&quot;</span>, os.path.dirname(sys.executable)))
+</span><span class="row"><span class="ln">50</span>        bases.append(os.path.dirname(sys.executable))
+</span><span class="row"><span class="ln">51</span>    bases.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), <span class="s">&quot;..&quot;</span>))
+</span><span class="row"><span class="ln">52</span>    <span class="k">for</span> b <span class="k">in</span> bases:
+</span><span class="row"><span class="ln">53</span>        p = os.path.join(b, <span class="s">&quot;ffmpeg&quot;</span>, exe)
+</span><span class="row"><span class="ln">54</span>        <span class="k">if</span> os.path.isfile(p):
+</span><span class="row"><span class="ln">55</span>            <span class="k">return</span> os.path.abspath(p)
+</span><span class="row"><span class="ln">56</span>    <span class="k">return</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">57</span>
+</span><span class="row"><span class="ln">58</span>
+</span><span class="row"><span class="ln">59</span><span class="k">def</span> has_mp3_encoder(ffmpeg: str) -&gt; bool:
+</span><span class="row"><span class="ln">60</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">61</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-encoders&quot;</span>], capture_output=<span class="k">True</span>,
+</span><span class="row"><span class="ln">62</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">30</span>)
+</span><span class="row"><span class="ln">63</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
+</span><span class="row"><span class="ln">64</span>        <span class="k">return</span> <span class="k">False</span>
+</span><span class="row"><span class="ln">65</span>    <span class="k">return</span> <span class="s">&quot;libmp3lame&quot;</span> <span class="k">in</span> r.stdout
+</span><span class="row"><span class="ln">66</span>
+</span><span class="row"><span class="ln">67</span>
+</span><span class="row"><span class="ln">68</span><span class="k">def</span> find_ffmpeg(preferred: Optional[str] = <span class="k">None</span>) -&gt; tuple:
+</span><span class="row"><span class="ln">69</span>    <span class="d">&quot;&quot;&quot;Returns (path or None, message). Tries: preferred, bundled, PATH.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">70</span>    tried = []
+</span><span class="row"><span class="ln">71</span>    <span class="k">for</span> cand <span class="k">in</span> [preferred, os.environ.get(<span class="s">&quot;RBMP3_FFMPEG&quot;</span>), bundled_ffmpeg(), shutil.which(<span class="s">&quot;ffmpeg&quot;</span>)]:
+</span><span class="row"><span class="ln">72</span>        <span class="k">if</span> cand <span class="k">and</span> cand <span class="k">not</span> <span class="k">in</span> tried:
+</span><span class="row"><span class="ln">73</span>            tried.append(cand)
+</span><span class="row"><span class="ln">74</span>            <span class="k">if</span> has_mp3_encoder(cand):
+</span><span class="row"><span class="ln">75</span>                <span class="k">return</span> cand, f&quot;Using ffmpeg: {cand}&quot;
+</span><span class="row"><span class="ln">76</span>    <span class="k">if</span> tried:
+</span><span class="row"><span class="ln">77</span>        <span class="k">return</span> <span class="k">None</span>, (<span class="s">&quot;No ffmpeg with an MP3 encoder (libmp3lame) was found. Checked:\n  &quot;</span>
+</span><span class="row"><span class="ln">78</span>                      + <span class="s">&quot;\n  &quot;</span>.join(tried))
+</span><span class="row"><span class="ln">79</span>    <span class="k">return</span> <span class="k">None</span>, <span class="s">&quot;ffmpeg was not found.&quot;</span>
+</span></pre></div></div><div class="sec" id="app-encoder-py-2"><div class="expl"><h3>2. Asking ffmpeg about a file</h3><p><span class="tag what">What</span> Read the codec name of an .m4a file (ALAC or AAC).</p><p><span class="tag why">Why</span> .m4a can hold lossless ALAC or lossy AAC. Converting AAC to MP3 would stack two lossy encodes, so AAC files are kept as they are.</p><p><span class="tag wrong">If it goes wrong</span> an unreadable file counts as &quot;not ALAC&quot; and is kept as-is.</p></div><div class="code"><pre><span class="row"><span class="ln">89</span>
+</span><span class="row"><span class="ln">90</span><span class="k">def</span> audio_codec(ffmpeg: str, path: str) -&gt; str:
+</span><span class="row"><span class="ln">91</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">92</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-i&quot;</span>, path], capture_output=<span class="k">True</span>,
+</span><span class="row"><span class="ln">93</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">60</span>)
+</span><span class="row"><span class="ln">94</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
+</span><span class="row"><span class="ln">95</span>        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">96</span>    m = re.search(<span class="s">r&quot;Audio:\s*([A-Za-z0-9_]+)&quot;</span>, r.stderr)
+</span><span class="row"><span class="ln">97</span>    <span class="k">return</span> m.group(<span class="n">1</span>).lower() <span class="k">if</span> m <span class="k">else</span> <span class="s">&quot;&quot;</span>
+</span></pre></div></div><div class="sec" id="app-encoder-py-3"><div class="expl"><h3>3. Building one ffmpeg command</h3><p><span class="tag what">What</span> The exact ffmpeg arguments for one track.</p><p><span class="tag why">Why</span> - 320 kbps constant bitrate, best encoder quality (-compression_level 0) - ID3v2.3 tags (the version DJ software reads most reliably) - cover art copied when present - tags from the rekordbox XML override the file&#x27;s own tags - compensate/align modes leave out the LAME header (-write_xing 0) so every player sees the same start delay - align mode trims the delay off the start (atrim) - rates above 48 kHz are resampled, since MP3 stops at 48 kHz</p><p><span class="tag wrong">If it goes wrong</span> the ffmpeg error is shown in the log and saved in the failures file; the first attempt keeps cover art, the second drops it.</p></div><div class="code"><pre><span class="row"><span class="ln">114</span>
+</span><span class="row"><span class="ln">115</span>TAG_MAP = [  <span class="c"># (rekordbox XML attribute, ID3 key ffmpeg understands)</span>
+</span><span class="row"><span class="ln">116</span>    (<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;title&quot;</span>), (<span class="s">&quot;Artist&quot;</span>, <span class="s">&quot;artist&quot;</span>), (<span class="s">&quot;Album&quot;</span>, <span class="s">&quot;album&quot;</span>),
+</span><span class="row"><span class="ln">117</span>    (<span class="s">&quot;Genre&quot;</span>, <span class="s">&quot;genre&quot;</span>), (<span class="s">&quot;Composer&quot;</span>, <span class="s">&quot;composer&quot;</span>), (<span class="s">&quot;Comments&quot;</span>, <span class="s">&quot;comment&quot;</span>),
+</span><span class="row"><span class="ln">118</span>    (<span class="s">&quot;Label&quot;</span>, <span class="s">&quot;publisher&quot;</span>), (<span class="s">&quot;Remixer&quot;</span>, <span class="s">&quot;TPE4&quot;</span>), (<span class="s">&quot;Grouping&quot;</span>, <span class="s">&quot;TIT1&quot;</span>),
+</span><span class="row"><span class="ln">119</span>    (<span class="s">&quot;Tonality&quot;</span>, <span class="s">&quot;TKEY&quot;</span>),
+</span><span class="row"><span class="ln">120</span>]
+</span><span class="row"><span class="ln">121</span>
+</span><span class="row"><span class="ln">122</span>
+</span><span class="row"><span class="ln">123</span><span class="k">def</span> tag_args(attrs: Dict[str, str]) -&gt; List[str]:
+</span><span class="row"><span class="ln">124</span>    args: List[str] = []
+</span><span class="row"><span class="ln">125</span>    <span class="k">for</span> attr, key <span class="k">in</span> TAG_MAP:
+</span><span class="row"><span class="ln">126</span>        v = attrs.get(attr, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">127</span>        <span class="k">if</span> v:
+</span><span class="row"><span class="ln">128</span>            args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;{key}={v}&quot;]
+</span><span class="row"><span class="ln">129</span>    year = attrs.get(<span class="s">&quot;Year&quot;</span>, <span class="s">&quot;0&quot;</span>)
+</span><span class="row"><span class="ln">130</span>    <span class="k">if</span> year <span class="k">and</span> year != <span class="s">&quot;0&quot;</span>:
+</span><span class="row"><span class="ln">131</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;date={year}&quot;]
+</span><span class="row"><span class="ln">132</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">133</span>        bpm = float(attrs.get(<span class="s">&quot;AverageBpm&quot;</span>, <span class="s">&quot;0&quot;</span>) <span class="k">or</span> <span class="n">0</span>)
+</span><span class="row"><span class="ln">134</span>    <span class="k">except</span> ValueError:
+</span><span class="row"><span class="ln">135</span>        bpm = <span class="n">0</span>
+</span><span class="row"><span class="ln">136</span>    <span class="k">if</span> bpm &gt; <span class="n">0</span>:
+</span><span class="row"><span class="ln">137</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;TBPM={round(bpm)}&quot;]
+</span><span class="row"><span class="ln">138</span>    <span class="k">return</span> args
+</span><span class="row"><span class="ln">139</span>
+</span><span class="row"><span class="ln">140</span>
+</span><span class="row"><span class="ln">141</span><span class="k">def</span> ffmpeg_commands(ffmpeg: str, job: Job, s: Settings, tmp: str) -&gt; List[List[str]]:
+</span><span class="row"><span class="ln">142</span>    attrs = job.track.element.attrib
+</span><span class="row"><span class="ln">143</span>    base = [ffmpeg, <span class="s">&quot;-nostdin&quot;</span>, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, job.track.path]
+</span><span class="row"><span class="ln">144</span>    audio = [<span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, s.bitrate, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
+</span><span class="row"><span class="ln">145</span>             <span class="s">&quot;-map_metadata&quot;</span>, <span class="s">&quot;0&quot;</span>, <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>, <span class="s">&quot;-write_id3v1&quot;</span>, <span class="s">&quot;1&quot;</span>]
+</span><span class="row"><span class="ln">146</span>    rate = int(float(attrs.get(<span class="s">&quot;SampleRate&quot;</span>) <span class="k">or</span> <span class="n">0</span>) <span class="k">or</span> <span class="n">0</span>)
+</span><span class="row"><span class="ln">147</span>    <span class="k">if</span> rate &gt; <span class="n">48000</span>:
+</span><span class="row"><span class="ln">148</span>        audio += [<span class="s">&quot;-ar&quot;</span>, str(mp3_sample_rate(rate))]
+</span><span class="row"><span class="ln">149</span>    <span class="k">if</span> s.mode == <span class="s">&quot;align&quot;</span>:
+</span><span class="row"><span class="ln">150</span>        audio += [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={s.trim_samples},asetpts=PTS-STARTPTS&quot;]
+</span><span class="row"><span class="ln">151</span>    <span class="k">if</span> s.mode <span class="k">in</span> (<span class="s">&quot;compensate&quot;</span>, <span class="s">&quot;align&quot;</span>):
+</span><span class="row"><span class="ln">152</span>        audio += [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]
+</span><span class="row"><span class="ln">153</span>    tail = tag_args(attrs) + [<span class="s">&quot;-f&quot;</span>, <span class="s">&quot;mp3&quot;</span>, tmp]
+</span><span class="row"><span class="ln">154</span>    with_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>, <span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:v?&quot;</span>, <span class="s">&quot;-c:v&quot;</span>, <span class="s">&quot;copy&quot;</span>, <span class="s">&quot;-disposition:v&quot;</span>, <span class="s">&quot;attached_pic&quot;</span>]
+</span><span class="row"><span class="ln">155</span>    no_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>]
+</span><span class="row"><span class="ln">156</span>    <span class="k">return</span> [base + with_art + audio + tail, base + no_art + audio + tail]
+</span></pre></div></div><div class="sec" id="app-encoder-py-4"><div class="expl"><h3>4. Running the whole plan</h3><p><span class="tag what">What</span> Encode every job on a pool of threads, report progress after each track, and stop cleanly when asked.</p><p><span class="tag why">Why</span> Encoding is the slow part; one ffmpeg per CPU core keeps the machine busy. Each MP3 is written as &quot;name.mp3.part&quot; and renamed when done, so a stopped run never leaves a half-written MP3 behind.</p><p><span class="tag wrong">If it goes wrong</span> failures are collected with their ffmpeg error; running again retries only what is missing.</p></div><div class="code"><pre><span class="row"><span class="ln">169</span>
+</span><span class="row"><span class="ln">170</span>@dataclass
+</span><span class="row"><span class="ln">171</span><span class="k">class</span> RunResult:
+</span><span class="row"><span class="ln">172</span>    done: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">173</span>    converted: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">174</span>    kept_aac: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">175</span>    failures: List[tuple] = field(default_factory=list)    <span class="c"># (source path, error)</span>
+</span><span class="row"><span class="ln">176</span>    cancelled: bool = <span class="k">False</span>
+</span><span class="row"><span class="ln">177</span>
+</span><span class="row"><span class="ln">178</span>
+</span><span class="row"><span class="ln">179</span>ProgressFn = Callable[[int, int, str, str], <span class="k">None</span>]   <span class="c"># (done, total, file name, status)</span>
+</span><span class="row"><span class="ln">180</span>
+</span><span class="row"><span class="ln">181</span>
+</span><span class="row"><span class="ln">182</span><span class="k">class</span> Runner:
+</span><span class="row"><span class="ln">183</span>    <span class="k">def</span> __init__(self, ffmpeg: str, plan: Plan, s: Settings,
+</span><span class="row"><span class="ln">184</span>                 progress: ProgressFn, cancel: Optional[threading.Event] = <span class="k">None</span>):
+</span><span class="row"><span class="ln">185</span>        self.ffmpeg, self.plan, self.s, self.progress = ffmpeg, plan, s, progress
+</span><span class="row"><span class="ln">186</span>        self.cancel = cancel <span class="k">or</span> threading.Event()
+</span><span class="row"><span class="ln">187</span>        self.lock = threading.Lock()
+</span><span class="row"><span class="ln">188</span>        self.procs: set = set()
+</span><span class="row"><span class="ln">189</span>        self.result = RunResult()
+</span><span class="row"><span class="ln">190</span>
+</span><span class="row"><span class="ln">191</span>    <span class="k">def</span> stop(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">192</span>        <span class="d">&quot;&quot;&quot;Called from the window&#x27;s Stop button (another thread).&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">193</span>        self.cancel.set()
+</span><span class="row"><span class="ln">194</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">195</span>            <span class="k">for</span> p <span class="k">in</span> list(self.procs):
+</span><span class="row"><span class="ln">196</span>                <span class="k">try</span>:
+</span><span class="row"><span class="ln">197</span>                    p.kill()
+</span><span class="row"><span class="ln">198</span>                <span class="k">except</span> OSError:
+</span><span class="row"><span class="ln">199</span>                    <span class="k">pass</span>
+</span><span class="row"><span class="ln">200</span>
+</span><span class="row"><span class="ln">201</span>    <span class="k">def</span> _run_cmd(self, cmd: List[str]) -&gt; tuple:
+</span><span class="row"><span class="ln">202</span>        p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+</span><span class="row"><span class="ln">203</span>                             creationflags=NO_WINDOW)
+</span><span class="row"><span class="ln">204</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">205</span>            self.procs.add(p)
+</span><span class="row"><span class="ln">206</span>        _, err = p.communicate()
+</span><span class="row"><span class="ln">207</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">208</span>            self.procs.discard(p)
+</span><span class="row"><span class="ln">209</span>        <span class="k">return</span> p.returncode, err.decode(<span class="s">&quot;utf-8&quot;</span>, <span class="s">&quot;replace&quot;</span>).strip()
+</span><span class="row"><span class="ln">210</span>
+</span><span class="row"><span class="ln">211</span>    <span class="k">def</span> _one(self, job: Job) -&gt; str:
+</span><span class="row"><span class="ln">212</span>        <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">213</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
+</span><span class="row"><span class="ln">214</span>        <span class="k">if</span> <span class="k">not</span> os.path.exists(job.track.path):
+</span><span class="row"><span class="ln">215</span>            <span class="k">return</span> <span class="s">&quot;FAIL source file missing&quot;</span>
+</span><span class="row"><span class="ln">216</span>        <span class="k">if</span> job.probe <span class="k">and</span> audio_codec(self.ffmpeg, job.track.path) != <span class="s">&quot;alac&quot;</span>:
+</span><span class="row"><span class="ln">217</span>            <span class="k">return</span> <span class="s">&quot;kept (AAC, already lossy)&quot;</span>
+</span><span class="row"><span class="ln">218</span>        os.makedirs(os.path.dirname(job.dst), exist_ok=<span class="k">True</span>)
+</span><span class="row"><span class="ln">219</span>        tmp = job.dst + <span class="s">&quot;.part&quot;</span>
+</span><span class="row"><span class="ln">220</span>        err = <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">221</span>        <span class="k">for</span> cmd <span class="k">in</span> ffmpeg_commands(self.ffmpeg, job, self.s, tmp):
+</span><span class="row"><span class="ln">222</span>            code, err = self._run_cmd(cmd)
+</span><span class="row"><span class="ln">223</span>            <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">224</span>                <span class="k">break</span>
+</span><span class="row"><span class="ln">225</span>            <span class="k">if</span> code == <span class="n">0</span> <span class="k">and</span> os.path.exists(tmp) <span class="k">and</span> os.path.getsize(tmp) &gt; <span class="n">0</span>:
+</span><span class="row"><span class="ln">226</span>                os.replace(tmp, job.dst)
+</span><span class="row"><span class="ln">227</span>                <span class="k">return</span> <span class="s">&quot;ok&quot;</span>
+</span><span class="row"><span class="ln">228</span>        <span class="k">if</span> os.path.exists(tmp):
+</span><span class="row"><span class="ln">229</span>            os.remove(tmp)
+</span><span class="row"><span class="ln">230</span>        <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">231</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
+</span><span class="row"><span class="ln">232</span>        <span class="k">return</span> <span class="s">&quot;FAIL &quot;</span> + (err.splitlines()[-<span class="n">1</span>] <span class="k">if</span> err <span class="k">else</span> <span class="s">&quot;ffmpeg failed&quot;</span>)
+</span><span class="row"><span class="ln">233</span>
+</span><span class="row"><span class="ln">234</span>    <span class="k">def</span> run(self) -&gt; RunResult:
+</span><span class="row"><span class="ln">235</span>        todo = self.plan.todo(self.s.overwrite)
+</span><span class="row"><span class="ln">236</span>        total = len(todo)
+</span><span class="row"><span class="ln">237</span>
+</span><span class="row"><span class="ln">238</span>        <span class="k">def</span> work(job: Job) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">239</span>            status = self._one(job)
+</span><span class="row"><span class="ln">240</span>            <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">241</span>                <span class="k">if</span> status == <span class="s">&quot;cancelled&quot;</span>:
+</span><span class="row"><span class="ln">242</span>                    <span class="k">return</span>
+</span><span class="row"><span class="ln">243</span>                self.result.done += <span class="n">1</span>
+</span><span class="row"><span class="ln">244</span>                <span class="k">if</span> status == <span class="s">&quot;ok&quot;</span>:
+</span><span class="row"><span class="ln">245</span>                    self.result.converted += <span class="n">1</span>
+</span><span class="row"><span class="ln">246</span>                <span class="k">elif</span> status.startswith(<span class="s">&quot;kept&quot;</span>):
+</span><span class="row"><span class="ln">247</span>                    self.result.kept_aac += <span class="n">1</span>
+</span><span class="row"><span class="ln">248</span>                <span class="k">else</span>:
+</span><span class="row"><span class="ln">249</span>                    self.result.failures.append((job.track.path, status[<span class="n">5</span>:]))
+</span><span class="row"><span class="ln">250</span>                done = self.result.done
+</span><span class="row"><span class="ln">251</span>            self.progress(done, total, os.path.basename(job.dst), status)
+</span><span class="row"><span class="ln">252</span>
+</span><span class="row"><span class="ln">253</span>        <span class="k">with</span> cf.ThreadPoolExecutor(max(<span class="n">1</span>, self.s.jobs)) <span class="k">as</span> ex:
+</span><span class="row"><span class="ln">254</span>            list(ex.map(work, todo))
+</span><span class="row"><span class="ln">255</span>        self.result.cancelled = self.cancel.is_set()
+</span><span class="row"><span class="ln">256</span>        <span class="k">return</span> self.result
+</span><span class="row"><span class="ln">257</span>
+</span><span class="row"><span class="ln">258</span>
+</span><span class="row"><span class="ln">259</span><span class="k">def</span> write_failures(path: str, failures: List[tuple]) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">260</span>    <span class="k">with</span> open(path, <span class="s">&quot;w&quot;</span>, encoding=<span class="s">&quot;utf-8&quot;</span>) <span class="k">as</span> f:
+</span><span class="row"><span class="ln">261</span>        <span class="k">for</span> src, err <span class="k">in</span> failures:
+</span><span class="row"><span class="ln">262</span>            f.write(f&quot;{src}\n    {err}\n&quot;)
+</span></pre></div></div><div class="sec" id="app-encoder-py-5"><div class="expl"><h3>5. Calibration tracks</h3><p><span class="tag what">What</span> Make four test tracks (a FLAC reference and three MP3 variants) with a kick exactly on every beat at 120 BPM, first kick at 1.000 s.</p><p><span class="tag why">Why</span> Import them into rekordbox, let it analyze, export the collection, and core.read_calibration compares the grid starts to the millisecond. This is how the 25 ms MP3 delay was measured.</p><p><span class="tag wrong">If it goes wrong</span> if rekordbox can&#x27;t find a grid on a test track, re-analyze it (right-click &gt; Analyze Track).</p></div><div class="code"><pre><span class="row"><span class="ln">275</span>
+</span><span class="row"><span class="ln">276</span>CAL_KICK = (<span class="s">&quot;if(gte(t,1), exp(-mod(t-1,0.5)*40)*sin(2*PI*(45*mod(t-1,0.5)+&quot;</span>
+</span><span class="row"><span class="ln">277</span>            <span class="s">&quot;(110/40)*(1-exp(-40*mod(t-1,0.5))))), 0)*0.9&quot;</span>)
+</span><span class="row"><span class="ln">278</span>CAL_FILES = [  <span class="c"># (file name, title, extra ffmpeg args or None for the FLAC)</span>
+</span><span class="row"><span class="ln">279</span>    (<span class="s">&quot;A - reference.flac&quot;</span>, <span class="s">&quot;CAL A reference FLAC&quot;</span>, <span class="k">None</span>),
+</span><span class="row"><span class="ln">280</span>    (<span class="s">&quot;B - standard.mp3&quot;</span>, <span class="s">&quot;CAL B standard MP3&quot;</span>, []),
+</span><span class="row"><span class="ln">281</span>    (<span class="s">&quot;C - no header.mp3&quot;</span>, <span class="s">&quot;CAL C no LAME header&quot;</span>, [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
+</span><span class="row"><span class="ln">282</span>    (<span class="s">&quot;D - pretrim no header.mp3&quot;</span>, <span class="s">&quot;CAL D pretrim no header&quot;</span>,
+</span><span class="row"><span class="ln">283</span>     [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={ENCODER_DELAY_SAMPLES},asetpts=PTS-STARTPTS&quot;, <span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
+</span><span class="row"><span class="ln">284</span>]
+</span><span class="row"><span class="ln">285</span>
+</span><span class="row"><span class="ln">286</span>
+</span><span class="row"><span class="ln">287</span><span class="k">def</span> make_calibration_tracks(ffmpeg: str, folder: str) -&gt; List[str]:
+</span><span class="row"><span class="ln">288</span>    os.makedirs(folder, exist_ok=<span class="k">True</span>)
+</span><span class="row"><span class="ln">289</span>    ref = os.path.join(folder, CAL_FILES[<span class="n">0</span>][<span class="n">0</span>])
+</span><span class="row"><span class="ln">290</span>    out = []
+</span><span class="row"><span class="ln">291</span>    <span class="k">for</span> name, title, extra <span class="k">in</span> CAL_FILES:
+</span><span class="row"><span class="ln">292</span>        dst = os.path.join(folder, name)
+</span><span class="row"><span class="ln">293</span>        <span class="k">if</span> extra <span class="k">is</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">294</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-f&quot;</span>, <span class="s">&quot;lavfi&quot;</span>,
+</span><span class="row"><span class="ln">295</span>                   <span class="s">&quot;-i&quot;</span>, f&quot;aevalsrc=&#x27;{CAL_KICK}&#x27;:s=44100:d=64:c=stereo&quot;, <span class="s">&quot;-sample_fmt&quot;</span>, <span class="s">&quot;s16&quot;</span>]
+</span><span class="row"><span class="ln">296</span>        <span class="k">else</span>:
+</span><span class="row"><span class="ln">297</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, ref,
+</span><span class="row"><span class="ln">298</span>                   <span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, <span class="s">&quot;320k&quot;</span>, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
+</span><span class="row"><span class="ln">299</span>                   <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>] + extra
+</span><span class="row"><span class="ln">300</span>        cmd += [<span class="s">&quot;-metadata&quot;</span>, f&quot;title={title}&quot;, <span class="s">&quot;-metadata&quot;</span>, <span class="s">&quot;artist=Calibration&quot;</span>, dst]
+</span><span class="row"><span class="ln">301</span>        r = subprocess.run(cmd, capture_output=<span class="k">True</span>, text=<span class="k">True</span>, creationflags=NO_WINDOW)
+</span><span class="row"><span class="ln">302</span>        <span class="k">if</span> r.returncode != <span class="n">0</span>:
+</span><span class="row"><span class="ln">303</span>            <span class="k">raise</span> RuntimeError(r.stderr.strip() <span class="k">or</span> f&quot;ffmpeg failed on {name}&quot;)
+</span><span class="row"><span class="ln">304</span>        out.append(dst)
+</span><span class="row"><span class="ln">305</span>    <span class="k">return</span> out
+</span></pre></div></div></section><section class="file" id="app-gui-py"><h2>app/gui.py</h2><p class="dim">The window</p><div class="intro"><pre class="doc">gui.py - the window (Qt, through PySide6).
+
+PySide6 is the official Python binding of Qt. Every class here (QMainWindow,
+QTreeWidget, QAction, signals and slots) is the same Qt class you would use in
+C++, with the same names; Qt&#x27;s C++ documentation applies directly.
+
+C++ reading notes
+  - `self` is `this`, written out explicitly as each method&#x27;s first parameter.
+  - `widget.clicked.connect(self.start)` is connect(widget, &amp;QPushButton::clicked,
+    this, &amp;MainWindow::start).
+  - `Signal(int, str)` declares a Qt signal, like `signals: void x(int, QString);`.
+  - Python has no `new`/`delete`: Qt parent-child ownership still applies, and
+    Python frees everything else automatically.</pre></div><div class="sec" id="app-gui-py-1"><div class="expl"><h3>1. Talking from the worker thread to the window</h3><p><span class="tag what">What</span> A QObject whose signals carry progress from the encoding thread.</p><p><span class="tag why">Why</span> Qt widgets may only be touched from the main (GUI) thread. Emitting a signal from another thread queues the call onto the GUI thread, the same as Qt::QueuedConnection in C++.</p><p><span class="tag wrong">If it goes wrong</span> a frozen window means work ran on the GUI thread; all encoding must stay inside Worker.run.</p></div><div class="code"><pre><span class="row"><span class="ln">59</span>
+</span><span class="row"><span class="ln">60</span><span class="k">class</span> Bridge(QObject):
+</span><span class="row"><span class="ln">61</span>    progress = Signal(int, int, str, str)     <span class="c"># done, total, file name, status</span>
+</span><span class="row"><span class="ln">62</span>    finished = Signal(object)                 <span class="c"># dict with the outcome</span>
+</span><span class="row"><span class="ln">63</span>    message = Signal(str)
+</span><span class="row"><span class="ln">64</span>
+</span><span class="row"><span class="ln">65</span>
+</span><span class="row"><span class="ln">66</span><span class="k">class</span> Worker(threading.Thread):
+</span><span class="row"><span class="ln">67</span>    <span class="k">def</span> __init__(self, ffmpeg: str, lib: core.Library, plan: core.Plan,
+</span><span class="row"><span class="ln">68</span>                 s: core.Settings, bridge: Bridge):
+</span><span class="row"><span class="ln">69</span>        super().__init__(daemon=<span class="k">True</span>)
+</span><span class="row"><span class="ln">70</span>        self.ffmpeg, self.lib, self.plan, self.s, self.bridge = ffmpeg, lib, plan, s, bridge
+</span><span class="row"><span class="ln">71</span>        self.runner: Optional[encoder.Runner] = <span class="k">None</span>
+</span><span class="row"><span class="ln">72</span>
+</span><span class="row"><span class="ln">73</span>    <span class="k">def</span> stop(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">74</span>        <span class="k">if</span> self.runner:
+</span><span class="row"><span class="ln">75</span>            self.runner.stop()
+</span><span class="row"><span class="ln">76</span>
+</span><span class="row"><span class="ln">77</span>    <span class="k">def</span> run(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">78</span>        out = {<span class="s">&quot;error&quot;</span>: <span class="k">None</span>, <span class="s">&quot;result&quot;</span>: encoder.RunResult(), <span class="s">&quot;tracks&quot;</span>: <span class="n">0</span>, <span class="s">&quot;playlists&quot;</span>: <span class="n">0</span>}
+</span><span class="row"><span class="ln">79</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">80</span>            <span class="k">if</span> <span class="k">not</span> self.s.xml_only:
+</span><span class="row"><span class="ln">81</span>                self.runner = encoder.Runner(self.ffmpeg, self.plan, self.s,
+</span><span class="row"><span class="ln">82</span>                                             self.bridge.progress.emit)
+</span><span class="row"><span class="ln">83</span>                out[<span class="s">&quot;result&quot;</span>] = self.runner.run()
+</span><span class="row"><span class="ln">84</span>            <span class="k">if</span> <span class="k">not</span> out[<span class="s">&quot;result&quot;</span>].cancelled:
+</span><span class="row"><span class="ln">85</span>                self.bridge.message.emit(<span class="s">&quot;Writing the XML…&quot;</span>)
+</span><span class="row"><span class="ln">86</span>                n, p = core.write_xml(self.lib, self.plan, self.s,
+</span><span class="row"><span class="ln">87</span>                                      <span class="k">lambda</span> f: encoder.audio_codec(self.ffmpeg, f) == <span class="s">&quot;alac&quot;</span>)
+</span><span class="row"><span class="ln">88</span>                out[<span class="s">&quot;tracks&quot;</span>], out[<span class="s">&quot;playlists&quot;</span>] = n, p
+</span><span class="row"><span class="ln">89</span>                <span class="k">if</span> out[<span class="s">&quot;result&quot;</span>].failures:
+</span><span class="row"><span class="ln">90</span>                    log = os.path.splitext(self.plan.out_xml)[<span class="n">0</span>] + <span class="s">&quot;_failures.txt&quot;</span>
+</span><span class="row"><span class="ln">91</span>                    encoder.write_failures(log, out[<span class="s">&quot;result&quot;</span>].failures)
+</span><span class="row"><span class="ln">92</span>                    out[<span class="s">&quot;failures_file&quot;</span>] = log
+</span><span class="row"><span class="ln">93</span>        <span class="k">except</span> Exception <span class="k">as</span> e:   <span class="c"># shown to the user instead of silently dying</span>
+</span><span class="row"><span class="ln">94</span>            out[<span class="s">&quot;error&quot;</span>] = f&quot;{type(e).__name__}: {e}&quot;
+</span><span class="row"><span class="ln">95</span>        self.bridge.finished.emit(out)
+</span></pre></div></div><div class="sec" id="app-gui-py-2"><div class="expl"><h3>2. The main window: layout</h3><p><span class="tag what">What</span> Builds every widget: file pickers, playlist tree, options, progress, log.</p><p><span class="tag why">Why</span> One screen holds the whole workflow, top to bottom: choose the XML, choose what to convert, choose how, preview, start.</p><p><span class="tag wrong">If it goes wrong</span> layout problems are cosmetic; the engine does not depend on any widget.</p></div><div class="code"><pre><span class="row"><span class="ln">106</span>
+</span><span class="row"><span class="ln">107</span><span class="k">class</span> MainWindow(QMainWindow):
+</span><span class="row"><span class="ln">108</span>    <span class="k">def</span> __init__(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">109</span>        super().__init__()
+</span><span class="row"><span class="ln">110</span>        self.setWindowTitle(f&quot;{APP_NAME} {VERSION}&quot;)
+</span><span class="row"><span class="ln">111</span>        self.resize(<span class="n">1100</span>, <span class="n">760</span>)
+</span><span class="row"><span class="ln">112</span>        <span class="c"># Saved options live in the registry; tests point RBMP3_SETTINGS at a</span>
+</span><span class="row"><span class="ln">113</span>        <span class="c"># temporary .ini file instead so they never touch the user&#x27;s settings.</span>
+</span><span class="row"><span class="ln">114</span>        ini = os.environ.get(<span class="s">&quot;RBMP3_SETTINGS&quot;</span>)
+</span><span class="row"><span class="ln">115</span>        self.cfg = QSettings(ini, QSettings.IniFormat) <span class="k">if</span> ini <span class="k">else</span> QSettings(<span class="s">&quot;rbmp3&quot;</span>, APP_NAME)
+</span><span class="row"><span class="ln">116</span>        self.lib: Optional[core.Library] = <span class="k">None</span>
+</span><span class="row"><span class="ln">117</span>        self.worker: Optional[Worker] = <span class="k">None</span>
+</span><span class="row"><span class="ln">118</span>        self.bridge = Bridge()
+</span><span class="row"><span class="ln">119</span>        self.bridge.progress.connect(self.on_progress)
+</span><span class="row"><span class="ln">120</span>        self.bridge.finished.connect(self.on_finished)
+</span><span class="row"><span class="ln">121</span>        self.bridge.message.connect(self.log)
+</span><span class="row"><span class="ln">122</span>        self.ffmpeg: Optional[str] = <span class="k">None</span>
+</span><span class="row"><span class="ln">123</span>        self._build_widgets()
+</span><span class="row"><span class="ln">124</span>        self._build_menus()
+</span><span class="row"><span class="ln">125</span>        self._restore()
+</span><span class="row"><span class="ln">126</span>        self.find_ffmpeg()
+</span><span class="row"><span class="ln">127</span>
+</span><span class="row"><span class="ln">128</span>    <span class="k">def</span> _build_widgets(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">129</span>        central = QWidget()
+</span><span class="row"><span class="ln">130</span>        v = QVBoxLayout(central)
+</span><span class="row"><span class="ln">131</span>
+</span><span class="row"><span class="ln">132</span>        <span class="c"># Files ---------------------------------------------------------------</span>
+</span><span class="row"><span class="ln">133</span>        files = QFormLayout()
+</span><span class="row"><span class="ln">134</span>        self.xml_edit = QLineEdit(readOnly=<span class="k">True</span>, placeholderText=<span class="s">&quot;File &gt; Open collection XML…&quot;</span>)
+</span><span class="row"><span class="ln">135</span>        b = QPushButton(<span class="s">&quot;Open…&quot;</span>)
+</span><span class="row"><span class="ln">136</span>        b.clicked.connect(self.open_xml)
+</span><span class="row"><span class="ln">137</span>        files.addRow(<span class="s">&quot;Collection XML&quot;</span>, self._row(self.xml_edit, b))
+</span><span class="row"><span class="ln">138</span>        self.src_edit = QLineEdit(placeholderText=<span class="s">&quot;Detected automatically&quot;</span>)
+</span><span class="row"><span class="ln">139</span>        b = QPushButton(<span class="s">&quot;Browse…&quot;</span>)
+</span><span class="row"><span class="ln">140</span>        b.clicked.connect(<span class="k">lambda</span>: self.pick_folder(self.src_edit))
+</span><span class="row"><span class="ln">141</span>        files.addRow(<span class="s">&quot;Source folder&quot;</span>, self._row(self.src_edit, b))
+</span><span class="row"><span class="ln">142</span>        self.dst_edit = QLineEdit(placeholderText=<span class="s">&#x27;Default: source folder + &quot; MP3&quot;&#x27;</span>)
+</span><span class="row"><span class="ln">143</span>        b = QPushButton(<span class="s">&quot;Browse…&quot;</span>)
+</span><span class="row"><span class="ln">144</span>        b.clicked.connect(<span class="k">lambda</span>: self.pick_folder(self.dst_edit))
+</span><span class="row"><span class="ln">145</span>        files.addRow(<span class="s">&quot;MP3 folder&quot;</span>, self._row(self.dst_edit, b))
+</span><span class="row"><span class="ln">146</span>        v.addLayout(files)
+</span><span class="row"><span class="ln">147</span>
+</span><span class="row"><span class="ln">148</span>        split = QSplitter(Qt.Horizontal)
+</span><span class="row"><span class="ln">149</span>
+</span><span class="row"><span class="ln">150</span>        <span class="c"># Playlists ---------------------------------------------------------------</span>
+</span><span class="row"><span class="ln">151</span>        left = QWidget()
+</span><span class="row"><span class="ln">152</span>        lv = QVBoxLayout(left)
+</span><span class="row"><span class="ln">153</span>        lv.setContentsMargins(<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>)
+</span><span class="row"><span class="ln">154</span>        lv.addWidget(QLabel(<span class="s">&quot;&lt;b&gt;Playlists&lt;/b&gt; — check some to convert only those; &quot;</span>
+</span><span class="row"><span class="ln">155</span>                            <span class="s">&quot;leave all unchecked for the whole collection&quot;</span>))
+</span><span class="row"><span class="ln">156</span>        self.tree = QTreeWidget()
+</span><span class="row"><span class="ln">157</span>        self.tree.setHeaderLabels([<span class="s">&quot;Playlist&quot;</span>, <span class="s">&quot;Tracks&quot;</span>])
+</span><span class="row"><span class="ln">158</span>        self.tree.setColumnWidth(<span class="n">0</span>, <span class="n">380</span>)
+</span><span class="row"><span class="ln">159</span>        self.tree.itemChanged.connect(<span class="k">lambda</span> *_: self.update_summary())
+</span><span class="row"><span class="ln">160</span>        lv.addWidget(self.tree)
+</span><span class="row"><span class="ln">161</span>        split.addWidget(left)
+</span><span class="row"><span class="ln">162</span>
+</span><span class="row"><span class="ln">163</span>        <span class="c"># Options -------------------------------------------------------------------</span>
+</span><span class="row"><span class="ln">164</span>        right = QWidget()
+</span><span class="row"><span class="ln">165</span>        rv = QVBoxLayout(right)
+</span><span class="row"><span class="ln">166</span>        rv.setContentsMargins(<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>)
+</span><span class="row"><span class="ln">167</span>        timing = QGroupBox(<span class="s">&quot;Cue timing&quot;</span>)
+</span><span class="row"><span class="ln">168</span>        tv = QVBoxLayout(timing)
+</span><span class="row"><span class="ln">169</span>        self.mode_radios = {}
+</span><span class="row"><span class="ln">170</span>        <span class="k">for</span> m <span class="k">in</span> core.MODES:
+</span><span class="row"><span class="ln">171</span>            r = QRadioButton(core.MODE_LABELS[m])
+</span><span class="row"><span class="ln">172</span>            r.toggled.connect(<span class="k">lambda</span> on, m=m: on <span class="k">and</span> self.set_mode(m))
+</span><span class="row"><span class="ln">173</span>            self.mode_radios[m] = r
+</span><span class="row"><span class="ln">174</span>            tv.addWidget(r)
+</span><span class="row"><span class="ln">175</span>        self.offset_spin = QDoubleSpinBox(suffix=<span class="s">&quot; ms&quot;</span>, minimum=-<span class="n">200</span>, maximum=<span class="n">200</span>, decimals=<span class="n">1</span>)
+</span><span class="row"><span class="ln">176</span>        self.offset_spin.valueChanged.connect(<span class="k">lambda</span> *_: self.update_summary())
+</span><span class="row"><span class="ln">177</span>        tv.addWidget(self._row(QLabel(<span class="s">&quot;Fixed offset:&quot;</span>), self.offset_spin))
+</span><span class="row"><span class="ln">178</span>        rv.addWidget(timing)
+</span><span class="row"><span class="ln">179</span>
+</span><span class="row"><span class="ln">180</span>        enc = QGroupBox(<span class="s">&quot;Encoding&quot;</span>)
+</span><span class="row"><span class="ln">181</span>        ef = QFormLayout(enc)
+</span><span class="row"><span class="ln">182</span>        self.bitrate_combo = QComboBox()
+</span><span class="row"><span class="ln">183</span>        self.bitrate_combo.addItems([<span class="s">&quot;320k&quot;</span>, <span class="s">&quot;256k&quot;</span>, <span class="s">&quot;192k&quot;</span>])
+</span><span class="row"><span class="ln">184</span>        self.bitrate_combo.currentTextChanged.connect(self.set_bitrate)
+</span><span class="row"><span class="ln">185</span>        ef.addRow(<span class="s">&quot;MP3 bitrate&quot;</span>, self.bitrate_combo)
+</span><span class="row"><span class="ln">186</span>        self.jobs_spin = QSpinBox(minimum=<span class="n">1</span>, maximum=<span class="n">64</span>, value=core.Settings.jobs)
+</span><span class="row"><span class="ln">187</span>        ef.addRow(<span class="s">&quot;Tracks at once&quot;</span>, self.jobs_spin)
+</span><span class="row"><span class="ln">188</span>        self.flag_boxes = {}
+</span><span class="row"><span class="ln">189</span>        <span class="k">for</span> key, label <span class="k">in</span> [(<span class="s">&quot;overwrite&quot;</span>, <span class="s">&quot;Re-encode MP3s that already exist&quot;</span>),
+</span><span class="row"><span class="ln">190</span>                           (<span class="s">&quot;xml_only&quot;</span>, <span class="s">&quot;XML only (don&#x27;t encode)&quot;</span>),
+</span><span class="row"><span class="ln">191</span>                           (<span class="s">&quot;only_playlists&quot;</span>, <span class="s">&quot;Skip tracks that are in no playlist&quot;</span>)]:
+</span><span class="row"><span class="ln">192</span>            c = QCheckBox(label)
+</span><span class="row"><span class="ln">193</span>            c.toggled.connect(<span class="k">lambda</span> on, k=key: self.set_flag(k, on))
+</span><span class="row"><span class="ln">194</span>            self.flag_boxes[key] = c
+</span><span class="row"><span class="ln">195</span>            ef.addRow(c)
+</span><span class="row"><span class="ln">196</span>        rv.addWidget(enc)
+</span><span class="row"><span class="ln">197</span>
+</span><span class="row"><span class="ln">198</span>        self.summary = QLabel(<span class="s">&quot;Open a collection XML to begin.&quot;</span>)
+</span><span class="row"><span class="ln">199</span>        self.summary.setWordWrap(<span class="k">True</span>)
+</span><span class="row"><span class="ln">200</span>        self.summary.setTextFormat(Qt.RichText)
+</span><span class="row"><span class="ln">201</span>        rv.addWidget(self.summary)
+</span><span class="row"><span class="ln">202</span>        rv.addStretch(<span class="n">1</span>)
+</span><span class="row"><span class="ln">203</span>        split.addWidget(right)
+</span><span class="row"><span class="ln">204</span>        split.setSizes([<span class="n">620</span>, <span class="n">480</span>])
+</span><span class="row"><span class="ln">205</span>        v.addWidget(split, <span class="n">1</span>)
+</span><span class="row"><span class="ln">206</span>
+</span><span class="row"><span class="ln">207</span>        <span class="c"># Run controls ------------------------------------------------------------------</span>
+</span><span class="row"><span class="ln">208</span>        self.preview_btn = QPushButton(<span class="s">&quot;Preview&quot;</span>)
+</span><span class="row"><span class="ln">209</span>        self.preview_btn.clicked.connect(self.preview)
+</span><span class="row"><span class="ln">210</span>        self.start_btn = QPushButton(<span class="s">&quot;Start&quot;</span>)
+</span><span class="row"><span class="ln">211</span>        self.start_btn.setDefault(<span class="k">True</span>)
+</span><span class="row"><span class="ln">212</span>        self.start_btn.clicked.connect(self.start)
+</span><span class="row"><span class="ln">213</span>        self.stop_btn = QPushButton(<span class="s">&quot;Stop&quot;</span>, enabled=<span class="k">False</span>)
+</span><span class="row"><span class="ln">214</span>        self.stop_btn.clicked.connect(self.stop)
+</span><span class="row"><span class="ln">215</span>        self.progress = QProgressBar()
+</span><span class="row"><span class="ln">216</span>        v.addWidget(self._row(self.preview_btn, self.start_btn, self.stop_btn, self.progress))
+</span><span class="row"><span class="ln">217</span>        self.log_view = QPlainTextEdit(readOnly=<span class="k">True</span>)
+</span><span class="row"><span class="ln">218</span>        self.log_view.setMaximumBlockCount(<span class="n">20000</span>)
+</span><span class="row"><span class="ln">219</span>        v.addWidget(self.log_view, <span class="n">1</span>)
+</span><span class="row"><span class="ln">220</span>        self.setCentralWidget(central)
+</span><span class="row"><span class="ln">221</span>
+</span><span class="row"><span class="ln">222</span>    @staticmethod
+</span><span class="row"><span class="ln">223</span>    <span class="k">def</span> _row(*widgets) -&gt; QWidget:
+</span><span class="row"><span class="ln">224</span>        w = QWidget()
+</span><span class="row"><span class="ln">225</span>        h = QHBoxLayout(w)
+</span><span class="row"><span class="ln">226</span>        h.setContentsMargins(<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>)
+</span><span class="row"><span class="ln">227</span>        <span class="k">for</span> x <span class="k">in</span> widgets:
+</span><span class="row"><span class="ln">228</span>            h.addWidget(x, <span class="n">1</span> <span class="k">if</span> isinstance(x, (QLineEdit, QProgressBar)) <span class="k">else</span> <span class="n">0</span>)
+</span><span class="row"><span class="ln">229</span>        <span class="k">return</span> w
+</span></pre></div></div><div class="sec" id="app-gui-py-3"><div class="expl"><h3>3. Menus</h3><p><span class="tag what">What</span> File, Mode, Options, Tools and Help menus.</p><p><span class="tag why">Why</span> Every option on the right-hand panel is also in a menu; both stay in step through set_mode / set_flag / set_bitrate (section 4).</p><p><span class="tag wrong">If it goes wrong</span> a menu tick that disagrees with the panel means a setter was bypassed; always change options through the setters.</p></div><div class="code"><pre><span class="row"><span class="ln">239</span>
+</span><span class="row"><span class="ln">240</span>    <span class="k">def</span> _build_menus(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">241</span>        mb = self.menuBar()
+</span><span class="row"><span class="ln">242</span>        m = mb.addMenu(<span class="s">&quot;&amp;File&quot;</span>)
+</span><span class="row"><span class="ln">243</span>        a = m.addAction(<span class="s">&quot;&amp;Open collection XML…&quot;</span>, self.open_xml)
+</span><span class="row"><span class="ln">244</span>        a.setShortcut(QKeySequence.Open)
+</span><span class="row"><span class="ln">245</span>        m.addAction(<span class="s">&quot;Open &amp;MP3 folder&quot;</span>, self.open_dst)
+</span><span class="row"><span class="ln">246</span>        m.addSeparator()
+</span><span class="row"><span class="ln">247</span>        m.addAction(<span class="s">&quot;E&amp;xit&quot;</span>, self.close)
+</span><span class="row"><span class="ln">248</span>
+</span><span class="row"><span class="ln">249</span>        m = mb.addMenu(<span class="s">&quot;&amp;Mode&quot;</span>)
+</span><span class="row"><span class="ln">250</span>        self.mode_actions = {}
+</span><span class="row"><span class="ln">251</span>        group = QActionGroup(self)
+</span><span class="row"><span class="ln">252</span>        <span class="k">for</span> mode <span class="k">in</span> core.MODES:
+</span><span class="row"><span class="ln">253</span>            act = QAction(core.MODE_LABELS[mode], self, checkable=<span class="k">True</span>)
+</span><span class="row"><span class="ln">254</span>            act.triggered.connect(<span class="k">lambda</span> _=<span class="k">False</span>, mo=mode: self.set_mode(mo))
+</span><span class="row"><span class="ln">255</span>            group.addAction(act)
+</span><span class="row"><span class="ln">256</span>            m.addAction(act)
+</span><span class="row"><span class="ln">257</span>            self.mode_actions[mode] = act
+</span><span class="row"><span class="ln">258</span>
+</span><span class="row"><span class="ln">259</span>        m = mb.addMenu(<span class="s">&quot;&amp;Options&quot;</span>)
+</span><span class="row"><span class="ln">260</span>        self.flag_actions = {}
+</span><span class="row"><span class="ln">261</span>        <span class="k">for</span> key <span class="k">in</span> (<span class="s">&quot;overwrite&quot;</span>, <span class="s">&quot;xml_only&quot;</span>, <span class="s">&quot;only_playlists&quot;</span>):
+</span><span class="row"><span class="ln">262</span>            act = QAction(self.flag_boxes[key].text(), self, checkable=<span class="k">True</span>)
+</span><span class="row"><span class="ln">263</span>            act.triggered.connect(<span class="k">lambda</span> on, k=key: self.set_flag(k, on))
+</span><span class="row"><span class="ln">264</span>            m.addAction(act)
+</span><span class="row"><span class="ln">265</span>            self.flag_actions[key] = act
+</span><span class="row"><span class="ln">266</span>        sub = m.addMenu(<span class="s">&quot;MP3 &amp;bitrate&quot;</span>)
+</span><span class="row"><span class="ln">267</span>        self.bitrate_actions = {}
+</span><span class="row"><span class="ln">268</span>        bgroup = QActionGroup(self)
+</span><span class="row"><span class="ln">269</span>        <span class="k">for</span> br <span class="k">in</span> (<span class="s">&quot;320k&quot;</span>, <span class="s">&quot;256k&quot;</span>, <span class="s">&quot;192k&quot;</span>):
+</span><span class="row"><span class="ln">270</span>            act = QAction(br, self, checkable=<span class="k">True</span>)
+</span><span class="row"><span class="ln">271</span>            act.triggered.connect(<span class="k">lambda</span> _=<span class="k">False</span>, b=br: self.set_bitrate(b))
+</span><span class="row"><span class="ln">272</span>            bgroup.addAction(act)
+</span><span class="row"><span class="ln">273</span>            sub.addAction(act)
+</span><span class="row"><span class="ln">274</span>            self.bitrate_actions[br] = act
+</span><span class="row"><span class="ln">275</span>
+</span><span class="row"><span class="ln">276</span>        m = mb.addMenu(<span class="s">&quot;&amp;Tools&quot;</span>)
+</span><span class="row"><span class="ln">277</span>        m.addAction(<span class="s">&quot;Make &amp;calibration tracks…&quot;</span>, self.make_calibration)
+</span><span class="row"><span class="ln">278</span>        m.addAction(<span class="s">&quot;Check calibration &amp;results…&quot;</span>, self.check_calibration)
+</span><span class="row"><span class="ln">279</span>        m.addSeparator()
+</span><span class="row"><span class="ln">280</span>        m.addAction(<span class="s">&quot;Choose &amp;ffmpeg…&quot;</span>, self.choose_ffmpeg)
+</span><span class="row"><span class="ln">281</span>
+</span><span class="row"><span class="ln">282</span>        m = mb.addMenu(<span class="s">&quot;&amp;Help&quot;</span>)
+</span><span class="row"><span class="ln">283</span>        m.addAction(<span class="s">&quot;How to &amp;import into rekordbox&quot;</span>, self.show_import_steps)
+</span><span class="row"><span class="ln">284</span>        m.addAction(<span class="s">&quot;&amp;About and licenses&quot;</span>, self.show_about)
+</span></pre></div></div><div class="sec" id="app-gui-py-4"><div class="expl"><h3>4. Keeping options in step</h3><p><span class="tag what">What</span> One setter per option updates the panel, the menu and the summary.</p><p><span class="tag why">Why</span> The same option appears in two places; one setter avoids drift. blockSignals stops the update from re-triggering itself (like QSignalBlocker in C++).</p><p><span class="tag wrong">If it goes wrong</span> see section 3.</p></div><div class="code"><pre><span class="row"><span class="ln">294</span>
+</span><span class="row"><span class="ln">295</span>    <span class="k">def</span> set_mode(self, mode: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">296</span>        <span class="k">for</span> m, r <span class="k">in</span> self.mode_radios.items():
+</span><span class="row"><span class="ln">297</span>            r.blockSignals(<span class="k">True</span>)
+</span><span class="row"><span class="ln">298</span>            r.setChecked(m == mode)
+</span><span class="row"><span class="ln">299</span>            r.blockSignals(<span class="k">False</span>)
+</span><span class="row"><span class="ln">300</span>            self.mode_actions[m].setChecked(m == mode) <span class="k">if</span> hasattr(self, <span class="s">&quot;mode_actions&quot;</span>) <span class="k">else</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">301</span>        self.offset_spin.setEnabled(mode == <span class="s">&quot;offset&quot;</span>)
+</span><span class="row"><span class="ln">302</span>        self.update_summary()
+</span><span class="row"><span class="ln">303</span>
+</span><span class="row"><span class="ln">304</span>    <span class="k">def</span> mode(self) -&gt; str:
+</span><span class="row"><span class="ln">305</span>        <span class="k">return</span> next((m <span class="k">for</span> m, r <span class="k">in</span> self.mode_radios.items() <span class="k">if</span> r.isChecked()), <span class="s">&quot;compensate&quot;</span>)
+</span><span class="row"><span class="ln">306</span>
+</span><span class="row"><span class="ln">307</span>    <span class="k">def</span> set_flag(self, key: str, on: bool) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">308</span>        box = self.flag_boxes[key]
+</span><span class="row"><span class="ln">309</span>        box.blockSignals(<span class="k">True</span>)
+</span><span class="row"><span class="ln">310</span>        box.setChecked(on)
+</span><span class="row"><span class="ln">311</span>        box.blockSignals(<span class="k">False</span>)
+</span><span class="row"><span class="ln">312</span>        <span class="k">if</span> hasattr(self, <span class="s">&quot;flag_actions&quot;</span>):
+</span><span class="row"><span class="ln">313</span>            self.flag_actions[key].setChecked(on)
+</span><span class="row"><span class="ln">314</span>        self.update_summary()
+</span><span class="row"><span class="ln">315</span>
+</span><span class="row"><span class="ln">316</span>    <span class="k">def</span> set_bitrate(self, br: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">317</span>        self.bitrate_combo.blockSignals(<span class="k">True</span>)
+</span><span class="row"><span class="ln">318</span>        self.bitrate_combo.setCurrentText(br)
+</span><span class="row"><span class="ln">319</span>        self.bitrate_combo.blockSignals(<span class="k">False</span>)
+</span><span class="row"><span class="ln">320</span>        <span class="k">if</span> hasattr(self, <span class="s">&quot;bitrate_actions&quot;</span>):
+</span><span class="row"><span class="ln">321</span>            self.bitrate_actions[br].setChecked(<span class="k">True</span>)
+</span></pre></div></div><div class="sec" id="app-gui-py-5"><div class="expl"><h3>5. Loading the collection and building the plan</h3><p><span class="tag what">What</span> Open the XML, fill the playlist tree, and turn the window&#x27;s current options into core.Settings and a core.Plan.</p><p><span class="tag why">Why</span> Preview and Start both call make_plan, so the preview always matches what Start will do.</p><p><span class="tag wrong">If it goes wrong</span> errors from the XML or the plan appear in a message box and the log, and nothing is written.</p></div><div class="code"><pre><span class="row"><span class="ln">332</span>
+</span><span class="row"><span class="ln">333</span>    <span class="k">def</span> open_xml(self, path: Optional[str] = <span class="k">None</span>) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">334</span>        <span class="k">if</span> <span class="k">not</span> path:
+</span><span class="row"><span class="ln">335</span>            start = os.path.dirname(self.xml_edit.text()) <span class="k">or</span> os.path.expanduser(<span class="s">&quot;~&quot;</span>)
+</span><span class="row"><span class="ln">336</span>            path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Open rekordbox collection XML&quot;</span>, start,
+</span><span class="row"><span class="ln">337</span>                                                  <span class="s">&quot;rekordbox XML (*.xml);;All files (*)&quot;</span>)
+</span><span class="row"><span class="ln">338</span>            <span class="k">if</span> <span class="k">not</span> path:
+</span><span class="row"><span class="ln">339</span>                <span class="k">return</span>
+</span><span class="row"><span class="ln">340</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">341</span>            self.lib = core.load_library(path)
+</span><span class="row"><span class="ln">342</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
+</span><span class="row"><span class="ln">343</span>            QMessageBox.warning(self, APP_NAME, f&quot;Could not read that XML:\n{e}&quot;)
+</span><span class="row"><span class="ln">344</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">345</span>        self.xml_edit.setText(path)
+</span><span class="row"><span class="ln">346</span>        self.fill_tree()
+</span><span class="row"><span class="ln">347</span>        self.log(f&quot;Loaded {path}: {len(self.lib.tracks)} tracks, &quot;
+</span><span class="row"><span class="ln">348</span>                 f&quot;{len(self.lib.playlists())} playlists.&quot;)
+</span><span class="row"><span class="ln">349</span>        self.update_summary()
+</span><span class="row"><span class="ln">350</span>
+</span><span class="row"><span class="ln">351</span>    <span class="k">def</span> fill_tree(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">352</span>        self.tree.blockSignals(<span class="k">True</span>)
+</span><span class="row"><span class="ln">353</span>        self.tree.clear()
+</span><span class="row"><span class="ln">354</span>
+</span><span class="row"><span class="ln">355</span>        <span class="k">def</span> add(parent, node: core.PlaylistNode) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">356</span>            <span class="k">for</span> c <span class="k">in</span> node.children:
+</span><span class="row"><span class="ln">357</span>                it = QTreeWidgetItem(parent, [c.name, <span class="s">&quot;&quot;</span> <span class="k">if</span> c.is_folder <span class="k">else</span> str(len(c.track_ids))])
+</span><span class="row"><span class="ln">358</span>                flags = it.flags() | Qt.ItemIsUserCheckable
+</span><span class="row"><span class="ln">359</span>                <span class="k">if</span> c.is_folder:
+</span><span class="row"><span class="ln">360</span>                    flags |= Qt.ItemIsAutoTristate
+</span><span class="row"><span class="ln">361</span>                it.setFlags(flags)
+</span><span class="row"><span class="ln">362</span>                it.setCheckState(<span class="n">0</span>, Qt.Unchecked)
+</span><span class="row"><span class="ln">363</span>                it.setData(<span class="n">0</span>, Qt.UserRole, <span class="k">None</span> <span class="k">if</span> c.is_folder <span class="k">else</span> c.name)
+</span><span class="row"><span class="ln">364</span>                <span class="k">if</span> c.is_folder:
+</span><span class="row"><span class="ln">365</span>                    add(it, c)
+</span><span class="row"><span class="ln">366</span>        add(self.tree.invisibleRootItem(), self.lib.playlist_root)
+</span><span class="row"><span class="ln">367</span>        self.tree.expandAll()
+</span><span class="row"><span class="ln">368</span>        self.tree.blockSignals(<span class="k">False</span>)
+</span><span class="row"><span class="ln">369</span>
+</span><span class="row"><span class="ln">370</span>    <span class="k">def</span> checked_playlists(self) -&gt; set:
+</span><span class="row"><span class="ln">371</span>        names = set()
+</span><span class="row"><span class="ln">372</span>
+</span><span class="row"><span class="ln">373</span>        <span class="k">def</span> walk(it: QTreeWidgetItem) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">374</span>            <span class="k">for</span> i <span class="k">in</span> range(it.childCount()):
+</span><span class="row"><span class="ln">375</span>                c = it.child(i)
+</span><span class="row"><span class="ln">376</span>                name = c.data(<span class="n">0</span>, Qt.UserRole)
+</span><span class="row"><span class="ln">377</span>                <span class="k">if</span> name <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> c.checkState(<span class="n">0</span>) == Qt.Checked:
+</span><span class="row"><span class="ln">378</span>                    names.add(name)
+</span><span class="row"><span class="ln">379</span>                walk(c)
+</span><span class="row"><span class="ln">380</span>        walk(self.tree.invisibleRootItem())
+</span><span class="row"><span class="ln">381</span>        <span class="k">return</span> names
+</span><span class="row"><span class="ln">382</span>
+</span><span class="row"><span class="ln">383</span>    <span class="k">def</span> settings(self) -&gt; core.Settings:
+</span><span class="row"><span class="ln">384</span>        <span class="k">return</span> core.Settings(
+</span><span class="row"><span class="ln">385</span>            xml_path=self.xml_edit.text(),
+</span><span class="row"><span class="ln">386</span>            src_root=self.src_edit.text().strip() <span class="k">or</span> <span class="k">None</span>,
+</span><span class="row"><span class="ln">387</span>            dst_root=self.dst_edit.text().strip() <span class="k">or</span> <span class="k">None</span>,
+</span><span class="row"><span class="ln">388</span>            playlists=self.checked_playlists(),
+</span><span class="row"><span class="ln">389</span>            only_playlists=self.flag_boxes[<span class="s">&quot;only_playlists&quot;</span>].isChecked(),
+</span><span class="row"><span class="ln">390</span>            mode=self.mode(), offset_ms=self.offset_spin.value(),
+</span><span class="row"><span class="ln">391</span>            bitrate=self.bitrate_combo.currentText(), jobs=self.jobs_spin.value(),
+</span><span class="row"><span class="ln">392</span>            overwrite=self.flag_boxes[<span class="s">&quot;overwrite&quot;</span>].isChecked(),
+</span><span class="row"><span class="ln">393</span>            xml_only=self.flag_boxes[<span class="s">&quot;xml_only&quot;</span>].isChecked())
+</span><span class="row"><span class="ln">394</span>
+</span><span class="row"><span class="ln">395</span>    <span class="k">def</span> current_plan(self) -&gt; Optional[core.Plan]:
+</span><span class="row"><span class="ln">396</span>        <span class="k">if</span> <span class="k">not</span> self.lib:
+</span><span class="row"><span class="ln">397</span>            <span class="k">return</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">398</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">399</span>            <span class="k">return</span> core.make_plan(self.lib, self.settings())
+</span><span class="row"><span class="ln">400</span>        <span class="k">except</span> ValueError <span class="k">as</span> e:
+</span><span class="row"><span class="ln">401</span>            self.summary.setText(f&quot;&lt;span style=&#x27;color:#d33&#x27;&gt;{e}&lt;/span&gt;&quot;)
+</span><span class="row"><span class="ln">402</span>            <span class="k">return</span> <span class="k">None</span>
+</span><span class="row"><span class="ln">403</span>
+</span><span class="row"><span class="ln">404</span>    <span class="k">def</span> update_summary(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">405</span>        <span class="k">if</span> <span class="k">not</span> hasattr(self, <span class="s">&quot;summary&quot;</span>) <span class="k">or</span> <span class="k">not</span> self.lib:
+</span><span class="row"><span class="ln">406</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">407</span>        s = self.settings()
+</span><span class="row"><span class="ln">408</span>        plan = self.current_plan()
+</span><span class="row"><span class="ln">409</span>        <span class="k">if</span> <span class="k">not</span> plan:
+</span><span class="row"><span class="ln">410</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">411</span>        todo = <span class="n">0</span> <span class="k">if</span> s.xml_only <span class="k">else</span> len(plan.todo(s.overwrite))
+</span><span class="row"><span class="ln">412</span>        scope = (f&quot;{len(s.playlists)} checked playlist(s)&quot; <span class="k">if</span> s.playlists
+</span><span class="row"><span class="ln">413</span>                 <span class="k">else</span> <span class="s">&quot;tracks in any playlist&quot;</span> <span class="k">if</span> s.only_playlists <span class="k">else</span> <span class="s">&quot;the whole collection&quot;</span>)
+</span><span class="row"><span class="ln">414</span>        self.summary.setText(
+</span><span class="row"><span class="ln">415</span>            f&quot;&lt;b&gt;Converting {scope}&lt;/b&gt;&lt;br&gt;&quot;
+</span><span class="row"><span class="ln">416</span>            f&quot;Source: {plan.src_root}&lt;br&gt;MP3 folder: {plan.dst_root}&lt;br&gt;&quot;
+</span><span class="row"><span class="ln">417</span>            f&quot;Tracks to convert: &lt;b&gt;{len(plan.jobs)}&lt;/b&gt; ({todo} to encode now)&lt;br&gt;&quot;
+</span><span class="row"><span class="ln">418</span>            f&quot;Already MP3, kept: {len(plan.keep)}&lt;br&gt;&quot;
+</span><span class="row"><span class="ln">419</span>            f&quot;Skipped: {len(plan.skipped)}&lt;br&gt;&quot;
+</span><span class="row"><span class="ln">420</span>            f&quot;Timing: {core.MODE_LABELS[s.mode]}&quot;)
+</span></pre></div></div><div class="sec" id="app-gui-py-6"><div class="expl"><h3>6. Preview, Start, Stop</h3><p><span class="tag what">What</span> Preview lists the plan in the log; Start runs it on a Worker thread; Stop asks the worker to finish its current tracks and quit.</p><p><span class="tag why">Why</span> The window stays responsive while encoding takes hours.</p><p><span class="tag wrong">If it goes wrong</span> Stop then Start again picks up where it left off, because finished MP3s are skipped.</p></div><div class="code"><pre><span class="row"><span class="ln">430</span>
+</span><span class="row"><span class="ln">431</span>    <span class="k">def</span> preview(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">432</span>        plan = self.current_plan()
+</span><span class="row"><span class="ln">433</span>        <span class="k">if</span> <span class="k">not</span> plan:
+</span><span class="row"><span class="ln">434</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">435</span>        s = self.settings()
+</span><span class="row"><span class="ln">436</span>        self.log(f&quot;--- Preview ---\nOutput XML: {plan.out_xml}&quot;)
+</span><span class="row"><span class="ln">437</span>        <span class="k">for</span> j <span class="k">in</span> plan.todo(s.overwrite)[:<span class="n">15</span>]:
+</span><span class="row"><span class="ln">438</span>            self.log(f&quot;  convert  {j.track.path}  →  {j.dst}&quot;)
+</span><span class="row"><span class="ln">439</span>        more = len(plan.todo(s.overwrite)) - <span class="n">15</span>
+</span><span class="row"><span class="ln">440</span>        <span class="k">if</span> more &gt; <span class="n">0</span>:
+</span><span class="row"><span class="ln">441</span>            self.log(f&quot;  … and {more} more&quot;)
+</span><span class="row"><span class="ln">442</span>        <span class="k">for</span> t, why <span class="k">in</span> plan.skipped[:<span class="n">15</span>]:
+</span><span class="row"><span class="ln">443</span>            self.log(f&quot;  skip     {t.path}  ({why})&quot;)
+</span><span class="row"><span class="ln">444</span>        <span class="k">if</span> len(plan.skipped) &gt; <span class="n">15</span>:
+</span><span class="row"><span class="ln">445</span>            self.log(f&quot;  … and {len(plan.skipped) - <span class="n">15</span>} more skipped&quot;)
+</span><span class="row"><span class="ln">446</span>
+</span><span class="row"><span class="ln">447</span>    <span class="k">def</span> start(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">448</span>        <span class="k">if</span> <span class="k">not</span> self.lib:
+</span><span class="row"><span class="ln">449</span>            self.open_xml()
+</span><span class="row"><span class="ln">450</span>            <span class="k">if</span> <span class="k">not</span> self.lib:
+</span><span class="row"><span class="ln">451</span>                <span class="k">return</span>
+</span><span class="row"><span class="ln">452</span>        <span class="k">if</span> <span class="k">not</span> self.ffmpeg:
+</span><span class="row"><span class="ln">453</span>            QMessageBox.warning(self, APP_NAME, <span class="s">&quot;No usable ffmpeg was found. Use Tools &gt; Choose ffmpeg.&quot;</span>)
+</span><span class="row"><span class="ln">454</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">455</span>        s = self.settings()
+</span><span class="row"><span class="ln">456</span>        plan = self.current_plan()
+</span><span class="row"><span class="ln">457</span>        <span class="k">if</span> <span class="k">not</span> plan:
+</span><span class="row"><span class="ln">458</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">459</span>        todo = <span class="n">0</span> <span class="k">if</span> s.xml_only <span class="k">else</span> len(plan.todo(s.overwrite))
+</span><span class="row"><span class="ln">460</span>        <span class="k">if</span> s.overwrite <span class="k">and</span> todo &gt; <span class="n">50</span>:
+</span><span class="row"><span class="ln">461</span>            <span class="k">if</span> QMessageBox.question(self, APP_NAME, f&quot;Re-encode {todo} tracks, including ones &quot;
+</span><span class="row"><span class="ln">462</span>                                    <span class="s">&quot;already converted?&quot;</span>) != QMessageBox.Yes:
+</span><span class="row"><span class="ln">463</span>                <span class="k">return</span>
+</span><span class="row"><span class="ln">464</span>        self._save()
+</span><span class="row"><span class="ln">465</span>        self.progress.setRange(<span class="n">0</span>, max(<span class="n">1</span>, todo))
+</span><span class="row"><span class="ln">466</span>        self.progress.setValue(<span class="n">0</span>)
+</span><span class="row"><span class="ln">467</span>        self.set_running(<span class="k">True</span>)
+</span><span class="row"><span class="ln">468</span>        self.log(f&quot;--- Start: {todo} to encode → {plan.dst_root}&quot;)
+</span><span class="row"><span class="ln">469</span>        self.worker = Worker(self.ffmpeg, self.lib, plan, s, self.bridge)
+</span><span class="row"><span class="ln">470</span>        self.worker.start()
+</span><span class="row"><span class="ln">471</span>
+</span><span class="row"><span class="ln">472</span>    <span class="k">def</span> stop(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">473</span>        <span class="k">if</span> self.worker:
+</span><span class="row"><span class="ln">474</span>            self.log(<span class="s">&quot;Stopping… (finished tracks are kept)&quot;</span>)
+</span><span class="row"><span class="ln">475</span>            self.worker.stop()
+</span><span class="row"><span class="ln">476</span>
+</span><span class="row"><span class="ln">477</span>    <span class="k">def</span> set_running(self, on: bool) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">478</span>        <span class="k">for</span> w <span class="k">in</span> (self.preview_btn, self.start_btn, self.tree, self.menuBar()):
+</span><span class="row"><span class="ln">479</span>            w.setEnabled(<span class="k">not</span> on)
+</span><span class="row"><span class="ln">480</span>        self.stop_btn.setEnabled(on)
+</span><span class="row"><span class="ln">481</span>
+</span><span class="row"><span class="ln">482</span>    <span class="k">def</span> on_progress(self, done: int, total: int, name: str, status: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">483</span>        self.progress.setMaximum(max(<span class="n">1</span>, total))
+</span><span class="row"><span class="ln">484</span>        self.progress.setValue(done)
+</span><span class="row"><span class="ln">485</span>        self.log(f&quot;[{done}/{total}] {status}  {name}&quot;)
+</span><span class="row"><span class="ln">486</span>
+</span><span class="row"><span class="ln">487</span>    <span class="k">def</span> on_finished(self, out: dict) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">488</span>        self.set_running(<span class="k">False</span>)
+</span><span class="row"><span class="ln">489</span>        r: encoder.RunResult = out[<span class="s">&quot;result&quot;</span>]
+</span><span class="row"><span class="ln">490</span>        <span class="k">if</span> out[<span class="s">&quot;error&quot;</span>]:
+</span><span class="row"><span class="ln">491</span>            self.log(<span class="s">&quot;ERROR: &quot;</span> + out[<span class="s">&quot;error&quot;</span>])
+</span><span class="row"><span class="ln">492</span>            QMessageBox.critical(self, APP_NAME, out[<span class="s">&quot;error&quot;</span>])
+</span><span class="row"><span class="ln">493</span>        <span class="k">elif</span> r.cancelled:
+</span><span class="row"><span class="ln">494</span>            self.log(<span class="s">&quot;Stopped. Press Start to continue where it left off.&quot;</span>)
+</span><span class="row"><span class="ln">495</span>        <span class="k">else</span>:
+</span><span class="row"><span class="ln">496</span>            msg = (f&quot;Done. {r.converted} converted, {r.kept_aac} AAC kept as-is, &quot;
+</span><span class="row"><span class="ln">497</span>                   f&quot;{len(r.failures)} failed.\nXML: {out[<span class="s">&#x27;tracks&#x27;</span>]} tracks, &quot;
+</span><span class="row"><span class="ln">498</span>                   f&quot;{out[<span class="s">&#x27;playlists&#x27;</span>]} playlists → {self.worker.plan.out_xml}&quot;)
+</span><span class="row"><span class="ln">499</span>            self.log(msg)
+</span><span class="row"><span class="ln">500</span>            <span class="k">if</span> r.failures:
+</span><span class="row"><span class="ln">501</span>                self.log(f&quot;Failed tracks are listed in {out.get(<span class="s">&#x27;failures_file&#x27;</span>)}&quot;)
+</span><span class="row"><span class="ln">502</span>            box = QMessageBox(QMessageBox.Information, APP_NAME, msg, parent=self)
+</span><span class="row"><span class="ln">503</span>            box.setInformativeText(<span class="s">&quot;Next: import the XML into rekordbox (Help &gt; How to import).&quot;</span>)
+</span><span class="row"><span class="ln">504</span>            box.exec()
+</span><span class="row"><span class="ln">505</span>        self.update_summary()
+</span></pre></div></div><div class="sec" id="app-gui-py-7"><div class="expl"><h3>7. Tools: calibration and ffmpeg</h3><p><span class="tag what">What</span> Make the four calibration tracks, read the results back, and let the user pick a different ffmpeg.</p><p><span class="tag why">Why</span> Lets any DJ verify the cue timing on their own rekordbox version, the same test that found rekordbox ignores the MP3 header.</p><p><span class="tag wrong">If it goes wrong</span> see encoder.py section 5.</p></div><div class="code"><pre><span class="row"><span class="ln">515</span>
+</span><span class="row"><span class="ln">516</span>    <span class="k">def</span> make_calibration(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">517</span>        <span class="k">if</span> <span class="k">not</span> self.ffmpeg:
+</span><span class="row"><span class="ln">518</span>            <span class="k">return</span> self.choose_ffmpeg()
+</span><span class="row"><span class="ln">519</span>        folder = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Folder for the calibration tracks&quot;</span>)
+</span><span class="row"><span class="ln">520</span>        <span class="k">if</span> <span class="k">not</span> folder:
+</span><span class="row"><span class="ln">521</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">522</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">523</span>            encoder.make_calibration_tracks(self.ffmpeg, os.path.join(folder, <span class="s">&quot;calibration&quot;</span>))
+</span><span class="row"><span class="ln">524</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
+</span><span class="row"><span class="ln">525</span>            QMessageBox.warning(self, APP_NAME, str(e))
+</span><span class="row"><span class="ln">526</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">527</span>        QMessageBox.information(self, APP_NAME, (
+</span><span class="row"><span class="ln">528</span>            <span class="s">&quot;Made 4 calibration tracks in:\n&quot;</span> + os.path.join(folder, <span class="s">&quot;calibration&quot;</span>) + <span class="s">&quot;\n\n&quot;</span>
+</span><span class="row"><span class="ln">529</span>            <span class="s">&quot;1. Drag them into rekordbox and let it analyze them.\n&quot;</span>
+</span><span class="row"><span class="ln">530</span>            <span class="s">&quot;2. File &gt; Export Collection in xml format.\n&quot;</span>
+</span><span class="row"><span class="ln">531</span>            <span class="s">&quot;3. Tools &gt; Check calibration results, and pick that XML.&quot;</span>))
+</span><span class="row"><span class="ln">532</span>
+</span><span class="row"><span class="ln">533</span>    <span class="k">def</span> check_calibration(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">534</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Exported collection XML&quot;</span>, <span class="s">&quot;&quot;</span>, <span class="s">&quot;XML (*.xml)&quot;</span>)
+</span><span class="row"><span class="ln">535</span>        <span class="k">if</span> <span class="k">not</span> path:
+</span><span class="row"><span class="ln">536</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">537</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">538</span>            rows = core.read_calibration(path)
+</span><span class="row"><span class="ln">539</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
+</span><span class="row"><span class="ln">540</span>            QMessageBox.warning(self, APP_NAME, str(e))
+</span><span class="row"><span class="ln">541</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">542</span>        <span class="k">if</span> <span class="k">not</span> rows:
+</span><span class="row"><span class="ln">543</span>            QMessageBox.information(self, APP_NAME, <span class="s">&quot;No calibration tracks found in that XML.&quot;</span>)
+</span><span class="row"><span class="ln">544</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">545</span>        lines = [f&quot;{t}: grid {g <span class="k">if</span> g <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&#x27;not analyzed&#x27;</span>}&quot;
+</span><span class="row"><span class="ln">546</span>                 + (f&quot;, {sh:+.1f} ms vs FLAC&quot; <span class="k">if</span> sh <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>) <span class="k">for</span> t, g, sh <span class="k">in</span> rows]
+</span><span class="row"><span class="ln">547</span>        shift = {t[:<span class="n">5</span>]: sh <span class="k">for</span> t, _, sh <span class="k">in</span> rows}
+</span><span class="row"><span class="ln">548</span>        verdict = <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">549</span>        <span class="k">if</span> shift.get(<span class="s">&quot;CAL C&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> shift.get(<span class="s">&quot;CAL D&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">550</span>            <span class="k">if</span> abs(shift[<span class="s">&quot;CAL D&quot;</span>]) &lt;= <span class="n">2</span> <span class="k">and</span> abs(shift[<span class="s">&quot;CAL C&quot;</span>] - <span class="n">25</span>) &lt;= <span class="n">3</span>:
+</span><span class="row"><span class="ln">551</span>                verdict = <span class="s">&quot;\n\nResult: Compensate and Align are both exact on this rekordbox.&quot;</span>
+</span><span class="row"><span class="ln">552</span>            <span class="k">else</span>:
+</span><span class="row"><span class="ln">553</span>                verdict = (f&quot;\n\nResult: this rekordbox differs from the tested one. &quot;
+</span><span class="row"><span class="ln">554</span>                           f&quot;Try Fixed offset {shift[<span class="s">&#x27;CAL C&#x27;</span>]:.0f} ms, and please report it.&quot;)
+</span><span class="row"><span class="ln">555</span>        QMessageBox.information(self, APP_NAME, <span class="s">&quot;\n&quot;</span>.join(lines) + verdict)
+</span><span class="row"><span class="ln">556</span>
+</span><span class="row"><span class="ln">557</span>    <span class="k">def</span> find_ffmpeg(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">558</span>        self.ffmpeg, msg = encoder.find_ffmpeg(self.cfg.value(<span class="s">&quot;ffmpeg&quot;</span>) <span class="k">or</span> <span class="k">None</span>)
+</span><span class="row"><span class="ln">559</span>        self.statusBar().showMessage(msg <span class="k">if</span> self.ffmpeg <span class="k">else</span> <span class="s">&quot;⚠ &quot;</span> + msg.splitlines()[<span class="n">0</span>])
+</span><span class="row"><span class="ln">560</span>        self.log(msg)
+</span><span class="row"><span class="ln">561</span>
+</span><span class="row"><span class="ln">562</span>    <span class="k">def</span> choose_ffmpeg(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">563</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Choose ffmpeg&quot;</span>, <span class="s">&quot;&quot;</span>,
+</span><span class="row"><span class="ln">564</span>                                              <span class="s">&quot;ffmpeg (ffmpeg.exe ffmpeg);;All files (*)&quot;</span>)
+</span><span class="row"><span class="ln">565</span>        <span class="k">if</span> path:
+</span><span class="row"><span class="ln">566</span>            <span class="k">if</span> encoder.has_mp3_encoder(path):
+</span><span class="row"><span class="ln">567</span>                self.cfg.setValue(<span class="s">&quot;ffmpeg&quot;</span>, path)
+</span><span class="row"><span class="ln">568</span>                self.find_ffmpeg()
+</span><span class="row"><span class="ln">569</span>            <span class="k">else</span>:
+</span><span class="row"><span class="ln">570</span>                QMessageBox.warning(self, APP_NAME, <span class="s">&quot;That ffmpeg has no MP3 encoder (libmp3lame).&quot;</span>)
+</span></pre></div></div><div class="sec" id="app-gui-py-8"><div class="expl"><h3>8. Small helpers: folders, log, help, saved settings</h3><p><span class="tag what">What</span> Folder pickers, the log, Help dialogs, and remembering options between runs (QSettings: the registry on Windows).</p><p><span class="tag why">Why</span> Convenience; nothing here affects the conversion itself.</p></div><div class="code"><pre><span class="row"><span class="ln">578</span>
+</span><span class="row"><span class="ln">579</span>    <span class="k">def</span> pick_folder(self, edit: QLineEdit) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">580</span>        d = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Choose folder&quot;</span>, edit.text() <span class="k">or</span> <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">581</span>        <span class="k">if</span> d:
+</span><span class="row"><span class="ln">582</span>            edit.setText(d.replace(<span class="s">&quot;\\&quot;</span>, <span class="s">&quot;/&quot;</span>))
+</span><span class="row"><span class="ln">583</span>            self.update_summary()
+</span><span class="row"><span class="ln">584</span>
+</span><span class="row"><span class="ln">585</span>    <span class="k">def</span> open_dst(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">586</span>        plan = self.current_plan()
+</span><span class="row"><span class="ln">587</span>        <span class="k">if</span> plan <span class="k">and</span> os.path.isdir(plan.dst_root):
+</span><span class="row"><span class="ln">588</span>            QDesktopServices.openUrl(QUrl.fromLocalFile(plan.dst_root))
+</span><span class="row"><span class="ln">589</span>
+</span><span class="row"><span class="ln">590</span>    <span class="k">def</span> log(self, text: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">591</span>        self.log_view.appendPlainText(text)
+</span><span class="row"><span class="ln">592</span>
+</span><span class="row"><span class="ln">593</span>    <span class="k">def</span> show_import_steps(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">594</span>        QMessageBox.information(self, <span class="s">&quot;Import into rekordbox&quot;</span>, IMPORT_STEPS)
+</span><span class="row"><span class="ln">595</span>
+</span><span class="row"><span class="ln">596</span>    <span class="k">def</span> show_about(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">597</span>        QMessageBox.about(self, f&quot;About {APP_NAME}&quot;, (
+</span><span class="row"><span class="ln">598</span>            f&quot;&lt;b&gt;{APP_NAME} {VERSION}&lt;/b&gt;&lt;br&gt;Makes an MP3 copy of a rekordbox library &quot;
+</span><span class="row"><span class="ln">599</span>            <span class="s">&quot;with cues, grids, ratings and playlists.&lt;br&gt;&lt;br&gt;&quot;</span>
+</span><span class="row"><span class="ln">600</span>            <span class="s">&quot;Uses FFmpeg (LGPL build) and Qt for Python (LGPL). Their licenses are in &quot;</span>
+</span><span class="row"><span class="ln">601</span>            <span class="s">&quot;the LICENSES folder next to the app.&lt;br&gt;&quot;</span>
+</span><span class="row"><span class="ln">602</span>            <span class="s">&quot;rekordbox is a trademark of AlphaTheta Corporation. This app is not &quot;</span>
+</span><span class="row"><span class="ln">603</span>            <span class="s">&quot;affiliated with AlphaTheta.&quot;</span>))
+</span><span class="row"><span class="ln">604</span>
+</span><span class="row"><span class="ln">605</span>    <span class="k">def</span> _restore(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">606</span>        self.set_mode(self.cfg.value(<span class="s">&quot;mode&quot;</span>, <span class="s">&quot;compensate&quot;</span>))
+</span><span class="row"><span class="ln">607</span>        self.set_bitrate(self.cfg.value(<span class="s">&quot;bitrate&quot;</span>, <span class="s">&quot;320k&quot;</span>))
+</span><span class="row"><span class="ln">608</span>        self.jobs_spin.setValue(int(self.cfg.value(<span class="s">&quot;jobs&quot;</span>, core.Settings.jobs)))
+</span><span class="row"><span class="ln">609</span>        self.offset_spin.setValue(float(self.cfg.value(<span class="s">&quot;offset_ms&quot;</span>, <span class="n">0.0</span>)))
+</span><span class="row"><span class="ln">610</span>        self.src_edit.setText(self.cfg.value(<span class="s">&quot;src&quot;</span>, <span class="s">&quot;&quot;</span>))
+</span><span class="row"><span class="ln">611</span>        self.dst_edit.setText(self.cfg.value(<span class="s">&quot;dst&quot;</span>, <span class="s">&quot;&quot;</span>))
+</span><span class="row"><span class="ln">612</span>        last = self.cfg.value(<span class="s">&quot;xml&quot;</span>, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">613</span>        <span class="k">if</span> last <span class="k">and</span> os.path.exists(last):
+</span><span class="row"><span class="ln">614</span>            self.open_xml(last)
+</span><span class="row"><span class="ln">615</span>
+</span><span class="row"><span class="ln">616</span>    <span class="k">def</span> _save(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">617</span>        <span class="k">for</span> k, v <span class="k">in</span> [(<span class="s">&quot;mode&quot;</span>, self.mode()), (<span class="s">&quot;bitrate&quot;</span>, self.bitrate_combo.currentText()),
+</span><span class="row"><span class="ln">618</span>                     (<span class="s">&quot;jobs&quot;</span>, self.jobs_spin.value()), (<span class="s">&quot;offset_ms&quot;</span>, self.offset_spin.value()),
+</span><span class="row"><span class="ln">619</span>                     (<span class="s">&quot;src&quot;</span>, self.src_edit.text()), (<span class="s">&quot;dst&quot;</span>, self.dst_edit.text()),
+</span><span class="row"><span class="ln">620</span>                     (<span class="s">&quot;xml&quot;</span>, self.xml_edit.text())]:
+</span><span class="row"><span class="ln">621</span>            self.cfg.setValue(k, v)
+</span><span class="row"><span class="ln">622</span>
+</span><span class="row"><span class="ln">623</span>    <span class="k">def</span> closeEvent(self, ev) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">624</span>        <span class="k">if</span> self.worker <span class="k">and</span> self.worker.is_alive():
+</span><span class="row"><span class="ln">625</span>            <span class="k">if</span> QMessageBox.question(self, APP_NAME, <span class="s">&quot;A conversion is running. Stop it and quit?&quot;</span>) \
+</span><span class="row"><span class="ln">626</span>                    != QMessageBox.Yes:
+</span><span class="row"><span class="ln">627</span>                ev.ignore()
+</span><span class="row"><span class="ln">628</span>                <span class="k">return</span>
+</span><span class="row"><span class="ln">629</span>            self.worker.stop()
+</span><span class="row"><span class="ln">630</span>            self.worker.join(timeout=<span class="n">10</span>)
+</span><span class="row"><span class="ln">631</span>        self._save()
+</span><span class="row"><span class="ln">632</span>        ev.accept()
+</span><span class="row"><span class="ln">633</span>
+</span><span class="row"><span class="ln">634</span>
+</span><span class="row"><span class="ln">635</span><span class="k">def</span> main(argv: Optional[List[str]] = <span class="k">None</span>) -&gt; int:
+</span><span class="row"><span class="ln">636</span>    app = QApplication(argv <span class="k">if</span> argv <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> sys.argv)
+</span><span class="row"><span class="ln">637</span>    app.setApplicationName(APP_NAME)
+</span><span class="row"><span class="ln">638</span>    w = MainWindow()
+</span><span class="row"><span class="ln">639</span>    w.show()
+</span><span class="row"><span class="ln">640</span>    <span class="k">return</span> app.exec()
+</span></pre></div></div></section><section class="file" id="app-cli-py"><h2>app/cli.py</h2><p class="dim">Command line</p><div class="intro"><pre class="doc">cli.py - the command-line front end (same engine as the window).
+
+Run:  python -m app collection.xml --compensate
+      python -m app --help
+
+C++ reading notes
+  - `argparse` turns command-line flags into an object with one field per
+    flag, like a getopt loop written for you.</pre></div><div class="sec" id="app-cli-py-1"><div class="expl"><h3>1. Flags</h3><p><span class="tag what">What</span> Every option the window has, as a command-line flag.</p><p><span class="tag why">Why</span> Scripting and troubleshooting; same flag names as the original script, so earlier commands keep working.</p><p><span class="tag wrong">If it goes wrong</span> run with --dry-run to see the plan without encoding.</p></div><div class="code"><pre><span class="row"><span class="ln">29</span>
+</span><span class="row"><span class="ln">30</span><span class="k">def</span> parse_args(argv):
+</span><span class="row"><span class="ln">31</span>    ap = argparse.ArgumentParser(prog=<span class="s">&quot;rbmp3&quot;</span>, description=f&quot;{APP_NAME} {VERSION}: &quot;
+</span><span class="row"><span class="ln">32</span>                                 <span class="s">&quot;make an MP3 copy of a rekordbox library with cues, grids, &quot;</span>
+</span><span class="row"><span class="ln">33</span>                                 <span class="s">&quot;ratings and playlists.&quot;</span>)
+</span><span class="row"><span class="ln">34</span>    ap.add_argument(<span class="s">&quot;xml&quot;</span>, help=<span class="s">&quot;rekordbox collection XML (File &gt; Export Collection in xml format)&quot;</span>)
+</span><span class="row"><span class="ln">35</span>    ap.add_argument(<span class="s">&quot;--src-root&quot;</span>, help=<span class="s">&quot;top folder of the source library (default: detected)&quot;</span>)
+</span><span class="row"><span class="ln">36</span>    ap.add_argument(<span class="s">&quot;--dst-root&quot;</span>, help=<span class="s">&#x27;top folder for the MP3 copy (default: &quot;&lt;src-root&gt; MP3&quot;)&#x27;</span>)
+</span><span class="row"><span class="ln">37</span>    ap.add_argument(<span class="s">&quot;--out&quot;</span>, help=<span class="s">&quot;output XML (default: &lt;dst-root&gt;/rekordbox_mp3.xml)&quot;</span>)
+</span><span class="row"><span class="ln">38</span>    ap.add_argument(<span class="s">&quot;--playlist&quot;</span>, action=<span class="s">&quot;append&quot;</span>, default=[], help=<span class="s">&quot;only this playlist (repeatable)&quot;</span>)
+</span><span class="row"><span class="ln">39</span>    ap.add_argument(<span class="s">&quot;--only-playlists&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>, help=<span class="s">&quot;skip tracks in no playlist&quot;</span>)
+</span><span class="row"><span class="ln">40</span>    mode = ap.add_mutually_exclusive_group()
+</span><span class="row"><span class="ln">41</span>    mode.add_argument(<span class="s">&quot;--compensate&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>,
+</span><span class="row"><span class="ln">42</span>                      help=<span class="s">&quot;RECOMMENDED (default): keep all audio, shift cues by the encoder delay&quot;</span>)
+</span><span class="row"><span class="ln">43</span>    mode.add_argument(<span class="s">&quot;--align&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>, help=<span class="s">&quot;trim the encoder delay off the audio&quot;</span>)
+</span><span class="row"><span class="ln">44</span>    mode.add_argument(<span class="s">&quot;--offset-ms&quot;</span>, type=float, help=<span class="s">&quot;shift cues by a fixed number of ms&quot;</span>)
+</span><span class="row"><span class="ln">45</span>    ap.add_argument(<span class="s">&quot;--trim-samples&quot;</span>, type=int, default=core.ENCODER_DELAY_SAMPLES,
+</span><span class="row"><span class="ln">46</span>                    help=<span class="s">&quot;samples to trim with --align (default 1105)&quot;</span>)
+</span><span class="row"><span class="ln">47</span>    ap.add_argument(<span class="s">&quot;--bitrate&quot;</span>, default=<span class="s">&quot;320k&quot;</span>, choices=[<span class="s">&quot;320k&quot;</span>, <span class="s">&quot;256k&quot;</span>, <span class="s">&quot;192k&quot;</span>])
+</span><span class="row"><span class="ln">48</span>    ap.add_argument(<span class="s">&quot;--jobs&quot;</span>, type=int, default=core.Settings.jobs)
+</span><span class="row"><span class="ln">49</span>    ap.add_argument(<span class="s">&quot;--overwrite&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>, help=<span class="s">&quot;re-encode MP3s that already exist&quot;</span>)
+</span><span class="row"><span class="ln">50</span>    ap.add_argument(<span class="s">&quot;--xml-only&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>, help=<span class="s">&quot;don&#x27;t encode; only rewrite the XML&quot;</span>)
+</span><span class="row"><span class="ln">51</span>    ap.add_argument(<span class="s">&quot;--dry-run&quot;</span>, action=<span class="s">&quot;store_true&quot;</span>, help=<span class="s">&quot;print the plan and stop&quot;</span>)
+</span><span class="row"><span class="ln">52</span>    ap.add_argument(<span class="s">&quot;--ffmpeg&quot;</span>, help=<span class="s">&quot;path to ffmpeg (default: bundled copy, then PATH)&quot;</span>)
+</span><span class="row"><span class="ln">53</span>    <span class="k">return</span> ap.parse_args(argv)
+</span><span class="row"><span class="ln">54</span>
+</span><span class="row"><span class="ln">55</span>
+</span><span class="row"><span class="ln">56</span><span class="k">def</span> settings_from(a) -&gt; core.Settings:
+</span><span class="row"><span class="ln">57</span>    <span class="k">if</span> a.align:
+</span><span class="row"><span class="ln">58</span>        mode = <span class="s">&quot;align&quot;</span>
+</span><span class="row"><span class="ln">59</span>    <span class="k">elif</span> a.offset_ms <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">60</span>        mode = <span class="s">&quot;offset&quot;</span>
+</span><span class="row"><span class="ln">61</span>    <span class="k">else</span>:
+</span><span class="row"><span class="ln">62</span>        mode = <span class="s">&quot;compensate&quot;</span>
+</span><span class="row"><span class="ln">63</span>    <span class="k">return</span> core.Settings(xml_path=a.xml, src_root=a.src_root, dst_root=a.dst_root, out_xml=a.out,
+</span><span class="row"><span class="ln">64</span>                         playlists=set(a.playlist), only_playlists=a.only_playlists, mode=mode,
+</span><span class="row"><span class="ln">65</span>                         offset_ms=a.offset_ms <span class="k">or</span> <span class="n">0.0</span>, trim_samples=a.trim_samples,
+</span><span class="row"><span class="ln">66</span>                         bitrate=a.bitrate, jobs=a.jobs, overwrite=a.overwrite,
+</span><span class="row"><span class="ln">67</span>                         xml_only=a.xml_only)
+</span></pre></div></div><div class="sec" id="app-cli-py-2"><div class="expl"><h3>2. Running</h3><p><span class="tag what">What</span> Load, plan, print the summary, encode, write the XML.</p><p><span class="tag why">Why</span> Same order as the window, so both behave the same.</p><p><span class="tag wrong">If it goes wrong</span> failed tracks are listed in &lt;out&gt;_failures.txt; run the same command again to retry them.</p></div><div class="code"><pre><span class="row"><span class="ln">77</span>
+</span><span class="row"><span class="ln">78</span><span class="k">def</span> main(argv=<span class="k">None</span>) -&gt; int:
+</span><span class="row"><span class="ln">79</span>    a = parse_args(argv <span class="k">if</span> argv <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> sys.argv[<span class="n">1</span>:])
+</span><span class="row"><span class="ln">80</span>    s = settings_from(a)
+</span><span class="row"><span class="ln">81</span>    lib = core.load_library(s.xml_path)
+</span><span class="row"><span class="ln">82</span>    <span class="k">if</span> s.playlists:
+</span><span class="row"><span class="ln">83</span>        missing = s.playlists - {p.name <span class="k">for</span> p <span class="k">in</span> lib.playlists()}
+</span><span class="row"><span class="ln">84</span>        <span class="k">if</span> missing:
+</span><span class="row"><span class="ln">85</span>            print(f&quot;Playlist not found: {sorted(missing)}&quot;, file=sys.stderr)
+</span><span class="row"><span class="ln">86</span>            <span class="k">return</span> <span class="n">2</span>
+</span><span class="row"><span class="ln">87</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">88</span>        plan = core.make_plan(lib, s)
+</span><span class="row"><span class="ln">89</span>    <span class="k">except</span> ValueError <span class="k">as</span> e:
+</span><span class="row"><span class="ln">90</span>        print(e, file=sys.stderr)
+</span><span class="row"><span class="ln">91</span>        <span class="k">return</span> <span class="n">2</span>
+</span><span class="row"><span class="ln">92</span>    todo = plan.todo(s.overwrite)
+</span><span class="row"><span class="ln">93</span>    print(f&quot;Source folder : {plan.src_root}\nMP3 folder    : {plan.dst_root}\nOutput XML    : {plan.out_xml}&quot;)
+</span><span class="row"><span class="ln">94</span>    print(f&quot;To convert    : {len(plan.jobs)} ({len(todo)} to encode now)&quot;)
+</span><span class="row"><span class="ln">95</span>    print(f&quot;Kept as-is    : {len(plan.keep)} MP3&quot;)
+</span><span class="row"><span class="ln">96</span>    print(f&quot;Timing mode   : {core.MODE_LABELS[s.mode]}&quot;)
+</span><span class="row"><span class="ln">97</span>    <span class="k">if</span> plan.skipped:
+</span><span class="row"><span class="ln">98</span>        t, why = plan.skipped[<span class="n">0</span>]
+</span><span class="row"><span class="ln">99</span>        print(f&quot;Skipped       : {len(plan.skipped)}, e.g. {t.path} ({why})&quot;)
+</span><span class="row"><span class="ln">100</span>    <span class="k">if</span> a.dry_run:
+</span><span class="row"><span class="ln">101</span>        <span class="k">return</span> <span class="n">0</span>
+</span><span class="row"><span class="ln">102</span>
+</span><span class="row"><span class="ln">103</span>    ffmpeg, msg = encoder.find_ffmpeg(a.ffmpeg)
+</span><span class="row"><span class="ln">104</span>    <span class="k">if</span> <span class="k">not</span> ffmpeg:
+</span><span class="row"><span class="ln">105</span>        print(msg, file=sys.stderr)
+</span><span class="row"><span class="ln">106</span>        <span class="k">return</span> <span class="n">3</span>
+</span><span class="row"><span class="ln">107</span>    result = encoder.RunResult()
+</span><span class="row"><span class="ln">108</span>    <span class="k">if</span> <span class="k">not</span> s.xml_only <span class="k">and</span> todo:
+</span><span class="row"><span class="ln">109</span>        <span class="k">def</span> progress(done, total, name, status):
+</span><span class="row"><span class="ln">110</span>            print(f&quot;[{done}/{total}] {status}  {name}&quot;, flush=<span class="k">True</span>)
+</span><span class="row"><span class="ln">111</span>        runner = encoder.Runner(ffmpeg, plan, s, progress)
+</span><span class="row"><span class="ln">112</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">113</span>            result = runner.run()
+</span><span class="row"><span class="ln">114</span>        <span class="k">except</span> KeyboardInterrupt:
+</span><span class="row"><span class="ln">115</span>            runner.stop()
+</span><span class="row"><span class="ln">116</span>            print(<span class="s">&quot;\nStopped. Run the same command again to continue.&quot;</span>)
+</span><span class="row"><span class="ln">117</span>            <span class="k">return</span> <span class="n">130</span>
+</span><span class="row"><span class="ln">118</span>    n_tracks, n_pl = core.write_xml(lib, plan, s,
+</span><span class="row"><span class="ln">119</span>                                    <span class="k">lambda</span> p: encoder.audio_codec(ffmpeg, p) == <span class="s">&quot;alac&quot;</span>)
+</span><span class="row"><span class="ln">120</span>    print(f&quot;\nWrote {plan.out_xml}: {n_tracks} tracks, {n_pl} playlists.&quot;)
+</span><span class="row"><span class="ln">121</span>    <span class="k">if</span> result.failures:
+</span><span class="row"><span class="ln">122</span>        log = os.path.splitext(plan.out_xml)[<span class="n">0</span>] + <span class="s">&quot;_failures.txt&quot;</span>
+</span><span class="row"><span class="ln">123</span>        encoder.write_failures(log, result.failures)
+</span><span class="row"><span class="ln">124</span>        print(f&quot;{len(result.failures)} failed - see {log}. Run again to retry them.&quot;)
+</span><span class="row"><span class="ln">125</span>        <span class="k">return</span> <span class="n">1</span>
+</span><span class="row"><span class="ln">126</span>    <span class="k">return</span> <span class="n">0</span>
+</span></pre></div></div></section><section class="file" id="packaging-rbmp3-spec"><h2>packaging/rbmp3.spec</h2><p class="dim">Packaging recipe</p><div class="whole"><pre><span class="row"><span class="ln">1</span><span class="c"># PyInstaller build recipe. Run through packaging/build_windows.ps1, or:</span>
+</span><span class="row"><span class="ln">2</span><span class="c">#   pyinstaller --noconfirm --clean packaging/rbmp3.spec</span>
+</span><span class="row"><span class="ln">3</span><span class="c">#</span>
+</span><span class="row"><span class="ln">4</span><span class="c"># What:  Bundles Python, Qt, the app and ffmpeg into one folder:</span>
+</span><span class="row"><span class="ln">5</span><span class="c">#        dist/MP3CopyForRekordbox/ with two programs that share the same files:</span>
+</span><span class="row"><span class="ln">6</span><span class="c">#          MP3CopyForRekordbox.exe   the window (no console)</span>
+</span><span class="row"><span class="ln">7</span><span class="c">#          rbmp3-cli.exe             the command line (console)</span>
+</span><span class="row"><span class="ln">8</span><span class="c"># Why:   A folder build (not one big .exe) starts faster, is flagged less often</span>
+</span><span class="row"><span class="ln">9</span><span class="c">#        by antivirus, and keeps Qt&#x27;s LGPL libraries replaceable, as the LGPL asks.</span>
+</span><span class="row"><span class="ln">10</span><span class="c"># If it goes wrong: &quot;ffmpeg missing&quot; means packaging/ffmpeg/ is empty; the build</span>
+</span><span class="row"><span class="ln">11</span><span class="c">#        script fills it.</span>
+</span><span class="row"><span class="ln">12</span><span class="k">import</span> os
+</span><span class="row"><span class="ln">13</span><span class="k">import</span> sys
+</span><span class="row"><span class="ln">14</span>
+</span><span class="row"><span class="ln">15</span>ROOT = os.path.abspath(os.path.join(SPECPATH, <span class="s">&quot;..&quot;</span>))
+</span><span class="row"><span class="ln">16</span>FF = <span class="s">&quot;ffmpeg.exe&quot;</span> <span class="k">if</span> sys.platform == <span class="s">&quot;win32&quot;</span> <span class="k">else</span> <span class="s">&quot;ffmpeg&quot;</span>
+</span><span class="row"><span class="ln">17</span>ff_path = os.path.join(ROOT, <span class="s">&quot;packaging&quot;</span>, <span class="s">&quot;ffmpeg&quot;</span>, FF)
+</span><span class="row"><span class="ln">18</span><span class="k">if</span> <span class="k">not</span> os.path.isfile(ff_path):
+</span><span class="row"><span class="ln">19</span>    <span class="k">raise</span> SystemExit(f&quot;ffmpeg missing: {ff_path} (run packaging/build_windows.ps1)&quot;)
+</span><span class="row"><span class="ln">20</span>
+</span><span class="row"><span class="ln">21</span>datas = [(ff_path, <span class="s">&quot;ffmpeg&quot;</span>), (os.path.join(ROOT, <span class="s">&quot;LICENSES&quot;</span>), <span class="s">&quot;LICENSES&quot;</span>)]
+</span><span class="row"><span class="ln">22</span><span class="k">for</span> extra <span class="k">in</span> (<span class="s">&quot;LICENSE.txt&quot;</span>, <span class="s">&quot;SOURCE.txt&quot;</span>):
+</span><span class="row"><span class="ln">23</span>    p = os.path.join(ROOT, <span class="s">&quot;packaging&quot;</span>, <span class="s">&quot;ffmpeg&quot;</span>, extra)
+</span><span class="row"><span class="ln">24</span>    <span class="k">if</span> os.path.isfile(p):
+</span><span class="row"><span class="ln">25</span>        datas.append((p, os.path.join(<span class="s">&quot;LICENSES&quot;</span>, <span class="s">&quot;ffmpeg&quot;</span>)))
+</span><span class="row"><span class="ln">26</span>
+</span><span class="row"><span class="ln">27</span>a = Analysis(
+</span><span class="row"><span class="ln">28</span>    [os.path.join(ROOT, <span class="s">&quot;run_app.py&quot;</span>)],
+</span><span class="row"><span class="ln">29</span>    pathex=[ROOT],
+</span><span class="row"><span class="ln">30</span>    datas=datas,
+</span><span class="row"><span class="ln">31</span>    excludes=[<span class="s">&quot;tkinter&quot;</span>, <span class="s">&quot;unittest&quot;</span>, <span class="s">&quot;pytest&quot;</span>, <span class="s">&quot;PySide6.QtNetwork&quot;</span>, <span class="s">&quot;PySide6.QtQml&quot;</span>,
+</span><span class="row"><span class="ln">32</span>              <span class="s">&quot;PySide6.QtQuick&quot;</span>, <span class="s">&quot;PySide6.QtPdf&quot;</span>, <span class="s">&quot;PySide6.QtSql&quot;</span>, <span class="s">&quot;PySide6.QtTest&quot;</span>],
+</span><span class="row"><span class="ln">33</span>)
+</span><span class="row"><span class="ln">34</span>pyz = PYZ(a.pure)
+</span><span class="row"><span class="ln">35</span>
+</span><span class="row"><span class="ln">36</span>gui_exe = EXE(pyz, a.scripts, [], exclude_binaries=<span class="k">True</span>, name=<span class="s">&quot;MP3CopyForRekordbox&quot;</span>,
+</span><span class="row"><span class="ln">37</span>              console=<span class="k">False</span>, icon=<span class="k">None</span>)
+</span><span class="row"><span class="ln">38</span>cli_exe = EXE(pyz, a.scripts, [], exclude_binaries=<span class="k">True</span>, name=<span class="s">&quot;rbmp3-cli&quot;</span>, console=<span class="k">True</span>)
+</span><span class="row"><span class="ln">39</span>
+</span><span class="row"><span class="ln">40</span>COLLECT(gui_exe, cli_exe, a.binaries, a.datas, name=<span class="s">&quot;MP3CopyForRekordbox&quot;</span>)
+</span></pre></div></section></main></div></body></html>

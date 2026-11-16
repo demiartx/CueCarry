@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MP3 Copy for rekordbox</title>
+<style>
+:root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --dim:#8b93a7;
+        --accent:#4cc38a; --link:#7fb2ff; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg:#f7f7f9; --panel:#fff; --line:#e3e5ea; --text:#1b1e24; --dim:#5f6677; --link:#1d5fd1; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text);
+       font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
+h1 { margin:0 0 4px; } .dim { color:var(--dim); }
+a { color:var(--link); }
+.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin:20px 0; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.card h2 { margin:0 0 8px; font-size:18px; }
+.card ol, .card ul { margin:0; padding-left:20px; }
+img { max-width:100%; border:1px solid var(--line); border-radius:8px; display:block; }
+code { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:0 4px;
+       font:14px ui-monospace, Consolas, monospace; }
+</style></head><body><main>
+<h1>🎧 MP3 Copy for rekordbox</h1>
+<p class="dim">Makes an MP3 copy of a FLAC/WAV/AIFF/ALAC rekordbox library, keeping playlists,
+hot cues, loops, beatgrids and ratings, with cue timing measured in rekordbox to the millisecond.</p>
+
+<div class="grid">
+  <div class="card"><h2>🎛️ Use the app</h2>
+    <ol><li>Unzip <code>MP3CopyForRekordbox-…-windows.zip</code>.</li>
+    <li>Run <code>MP3CopyForRekordbox.exe</code>.</li>
+    <li>Follow <a href="README.md#using-the-app">Using the app</a>.</li></ol></div>
+  <div class="card"><h2>🔨 Build the app</h2>
+    <ol><li>Install Python: <code>winget install Python.Python.3.12</code></li>
+    <li>Double-click <code>packaging\build_windows.bat</code></li>
+    <li>The app lands in <code>dist\</code>. Details: <a href="README.md#building-the-windows-app">Building</a>.</li></ol></div>
+  <div class="card"><h2>📖 Read the code</h2>
+    <ul><li><a href="docs/code-tour.html">Code tour</a>: every section's What / Why / If it goes wrong, beside its code</li>
+    <li><a href="README.md#how-the-code-is-organized">How the code is organized</a></li>
+    <li><a href="README.md#cue-timing">Cue timing</a>: the measurements behind the modes</li></ul></div>
+</div>
+
+<img src="docs/screenshot.png" alt="The app window with a playlist checked and a preview in the log">
+
+<div class="grid">
+  <div class="card"><h2>🧪 Run from source</h2>
+    <ul><li><code>py -m pip install -r requirements.txt</code></li>
+    <li><code>py -m app</code> opens the window</li>
+    <li><code>py -m app collection.xml --dry-run</code> runs the command line</li></ul></div>
+  <div class="card"><h2>✅ Tests</h2>
+    <ul><li><code>py -m pip install -r requirements-dev.txt</code></li>
+    <li><code>py -m pytest -q</code> (needs ffmpeg with libmp3lame)</li>
+    <li>They check real audio timing, not just the XML.</li></ul></div>
+  <div class="card"><h2>⚖️ Licenses</h2>
+    <ul><li><a href="LICENSES/THIRD_PARTY_NOTICES.md">Third-party notices</a> (FFmpeg, Qt, Python)</li>
+    <li>rekordbox is a trademark of AlphaTheta Corporation; this project is not affiliated with it.</li></ul></div>
+</div>
+</main></body></html>
