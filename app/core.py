@@ -223,14 +223,18 @@ def load_library(xml_path: str) -> Library:
 #        plan, so what you preview is what runs.
 # If it goes wrong: tracks "outside the source folder" are skipped. Choose a
 #        source folder that contains all of them (for example the drive root).
+#        The output XML can go anywhere except over the collection XML itself.
 # =============================================================================
+
+DEFAULT_OUT_NAME = "rekordbox_mp3.xml"
+
 
 @dataclass
 class Settings:
     xml_path: str
     src_root: Optional[str] = None       # None = detect automatically
     dst_root: Optional[str] = None       # None = "<src_root> MP3"
-    out_xml: Optional[str] = None        # None = "<dst_root>/rekordbox_mp3.xml"
+    out_xml: Optional[str] = None        # None = "<dst_root>/rekordbox_mp3.xml"; a folder = that name inside it
     playlists: Set[str] = field(default_factory=set)   # empty = whole collection
     only_playlists: bool = False
     mode: str = "compensate"
@@ -282,7 +286,14 @@ def make_plan(lib: Library, s: Settings) -> Plan:
     dst_root = norm(s.dst_root) if s.dst_root else src_root + " MP3"
     if is_under(dst_root, src_root):
         raise ValueError("The MP3 folder must not be inside the source folder.")
-    out_xml = s.out_xml or posixpath.join(dst_root, "rekordbox_mp3.xml")
+    if s.out_xml:
+        out_xml = norm(os.path.abspath(s.out_xml))
+        if os.path.isdir(out_xml):            # a folder was given: default file name inside it
+            out_xml = posixpath.join(out_xml, DEFAULT_OUT_NAME)
+    else:
+        out_xml = posixpath.join(dst_root, DEFAULT_OUT_NAME)
+    if os.path.normcase(os.path.abspath(out_xml)) == os.path.normcase(os.path.abspath(s.xml_path)):
+        raise ValueError("The output XML must not be the collection XML you opened.")
 
     jobs: List[Job] = []
     keep: List[Track] = []

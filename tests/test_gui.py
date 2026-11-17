@@ -68,3 +68,25 @@ def test_window_converts_a_playlist(qapp, library, monkeypatch, tmp_path):
     os.makedirs(DOCS, exist_ok=True)
     w.grab().save(os.path.join(DOCS, "screenshot-test-library.png"))
     w.close()
+
+
+def test_window_output_xml_location(qapp, library, monkeypatch, tmp_path):
+    tmp, xml, music = library
+    monkeypatch.setenv("CUECARRY_NO_DIALOGS", "1")
+    monkeypatch.setenv("CUECARRY_SETTINGS", str(tmp_path / "settings.ini"))
+    out = os.path.join(str(tmp_path), "exports", "mp3 playlists.xml")
+    w = gui.MainWindow()
+    w.open_xml(xml)
+    w.src_edit.setText(music)
+    assert w.current_plan().out_xml.endswith(" MP3/rekordbox_mp3.xml")      # empty = default
+    w.out_edit.setText(out)
+    w.set_flag("xml_only", True)
+    w.start()
+    log = w.log_view.toPlainText
+    assert wait_until(lambda: not w.worker.is_alive() and w.start_btn.isEnabled()), log()
+    assert os.path.exists(out), log()
+    assert not os.path.exists(os.path.join(music + " MP3", "rekordbox_mp3.xml")), log()
+    w.close()                                                               # saves settings
+    w2 = gui.MainWindow()
+    assert w2.out_edit.text() == out                                        # remembered
+    w2.close()

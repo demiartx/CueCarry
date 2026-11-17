@@ -182,6 +182,24 @@ def test_rerun_skips_and_xml_only(library):
     assert t["Title 1"].find("POSITION_MARK").get("Start") == "1.010"
 
 
+def test_output_xml_location(library):
+    tmp, xml, music = library
+    lib = core.load_library(xml)
+    base = dict(xml_path=xml, src_root=music)
+    default = core.make_plan(lib, core.Settings(**base)).out_xml
+    assert default == core.norm(music) + " MP3/rekordbox_mp3.xml"            # empty = as before
+    custom = str(tmp / "exports" / "mp3 playlists.xml")
+    assert core.make_plan(lib, core.Settings(**base, out_xml=custom)).out_xml == core.norm(custom)
+    (tmp / "exports").mkdir()
+    in_folder = core.make_plan(lib, core.Settings(**base, out_xml=str(tmp / "exports"))).out_xml
+    assert in_folder == core.norm(str(tmp / "exports")) + "/rekordbox_mp3.xml"
+    with pytest.raises(ValueError, match="collection XML"):                  # never overwrite the input
+        core.make_plan(lib, core.Settings(**base, out_xml=xml))
+    assert cli.main([xml, "--src-root", music, "--out", custom, "--xml-only"]) == 0
+    assert "Title 7" in tracks_by_name(custom)
+    assert not os.path.exists(default)
+
+
 def test_calibration_round_trip(tmp_path):
     files = encoder.make_calibration_tracks(FFMPEG, str(tmp_path / "cal"))
     assert len(files) == 4

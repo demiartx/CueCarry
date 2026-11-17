@@ -8,11 +8,11 @@ Your original files and your rekordbox collection are never changed. The app wri
 
 ## Start here
 
-**Open [`index.html`](index.html)** (double-click it, or run `start index.html`). It links everything: the app, the build, the code tour and the tests.
+**Open [`index.html`](index.html)** (double-click it, or run `start index.html`). It links everything: the app, the build and the tests.
 
 - **To use the app:** see [Using the app](#using-the-app).
 - **To build the app:** see [Building the Windows app](#building-the-windows-app).
-- **To read the code:** open [`docs/code-tour.html`](docs/code-tour.html).
+- **To read the code:** see [How the code is organized](#how-the-code-is-organized).
 
 ---
 
@@ -48,12 +48,13 @@ Your original files and your rekordbox collection are never changed. The app wri
    - b. Choose **File > Open collection XML** and pick the file.
    - c. Check **Source folder**. It's detected from the drive that holds most of your tracks. Tracks on other drives are listed as skipped.
    - d. Check **MP3 folder**. The default is the source folder with ` MP3` added.
+   - e. Optional: set **Output XML** to choose where the new XML for the MP3 playlists is written. Leave it empty to use `rekordbox_mp3.xml` in the MP3 folder. It can't be the collection XML you opened.
 3. **Test with one playlist**
    - a. Check one playlist of 10–30 tracks in the list.
    - b. Leave **Cue timing** on **Compensate**.
    - c. Press **Preview** to see what will happen, then **Start**.
 4. **Import the test into rekordbox**
-   - a. Open **Preferences > Advanced > Database > rekordbox xml**. Set **Imported Library** to `rekordbox_mp3.xml` in your MP3 folder.
+   - a. Open **Preferences > Advanced > Database > rekordbox xml**. Set **Imported Library** to the output XML: `rekordbox_mp3.xml` in your MP3 folder, unless you chose another place.
    - b. Open **Preferences > View > Layout** and turn on **rekordbox xml**.
    - c. In the sidebar, open **rekordbox xml > Playlists**, right-click the **MP3** folder and choose **Import Playlist**.
 5. **Check the test**
@@ -117,6 +118,7 @@ The same engine runs without the window:
 cuecarry-cli.exe collection.xml --dry-run
 cuecarry-cli.exe collection.xml --playlist "My Test Playlist"
 cuecarry-cli.exe collection.xml --align --overwrite
+cuecarry-cli.exe collection.xml --out "D:\rekordbox\mp3 playlists.xml"
 cuecarry-cli.exe --help
 ```
 
@@ -126,7 +128,7 @@ From source, use `py -m app` in place of `cuecarry-cli.exe`.
 
 **"No ffmpeg with an MP3 encoder was found."** The bundled ffmpeg is missing, or a stripped-down copy was chosen. A common one is `…\AppData\Local\Microsoft\WindowsApps\ffmpeg.exe`, a Windows app execution alias that comes first on PATH. Use **Tools > Choose ffmpeg** and pick a full build. To turn the alias off: **Settings > Apps > Advanced app settings > App execution aliases**.
 
-**Some tracks failed.** They're listed in `rekordbox_mp3_failures.txt` next to the output XML. Fix the cause and press **Start** again. Only missing MP3s are encoded.
+**Some tracks failed.** They're listed in a `_failures.txt` file next to the output XML (`rekordbox_mp3_failures.txt` by default). Fix the cause and press **Start** again. Only missing MP3s are encoded.
 
 **"source file missing".** The XML points at a file that was moved or renamed. Use rekordbox's **Relocate**, export the collection again, and reopen it.
 
@@ -155,7 +157,6 @@ py -m app                                       # the window
 py -m app collection.xml --dry-run             # the command line
 py -m pip install -r requirements-dev.txt       # tests and PyInstaller
 py -m pytest -q                                 # tests (needs ffmpeg with libmp3lame on PATH)
-python tools/make_code_tour.py                  # rebuild docs/code-tour.html
 ```
 
 ## How the code is organized
@@ -168,9 +169,9 @@ python tools/make_code_tour.py                  # rebuild docs/code-tour.html
 | `app/cli.py` | The command line |
 | `tests/` | End-to-end tests with real audio, including timing checks, plus a window test |
 | `packaging/` | The PyInstaller recipe and the Windows build script |
-| `tools/` | The code tour generator and the screenshot maker |
+| `tools/` | The screenshot maker |
 
-Every source file is split into numbered sections with **What / Why / If it goes wrong** headers. [`docs/code-tour.html`](docs/code-tour.html) shows each explanation beside its code.
+Every source file is split into numbered sections with **What / Why / If it goes wrong** headers.
 
 ## Licenses
 

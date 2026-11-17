@@ -48,11 +48,16 @@ xml = os.path.join(tempfile.mkdtemp(), "collection.xml")
 ET.ElementTree(root).write(xml, encoding="UTF-8", xml_declaration=True)
 
 os.environ["CUECARRY_SETTINGS"] = os.path.join(tempfile.mkdtemp(), "settings.ini")
+if sys.platform == "win32":     # DPI-unaware: a 1200x800 image whatever the display scaling
+    os.environ.setdefault("QT_QPA_PLATFORM", "windows:dpiawareness=0")
 app = QApplication([])
 w = gui.MainWindow()
-w.log_view.clear()
 w.resize(1200, 800)
 w.open_xml(xml)
+# The real "Loaded" line shows the temp folder, which includes the local user name.
+w.log_view.clear()
+w.log(f"Loaded D:/DJ Music/collection.xml: {len(w.lib.tracks)} tracks, "
+      f"{len(w.lib.playlists())} playlists.")
 w.set_mode("compensate")
 top = w.tree.invisibleRootItem()
 for i in range(top.childCount()):

@@ -145,6 +145,11 @@ class MainWindow(QMainWindow):
         b = QPushButton("Browse…")
         b.clicked.connect(lambda: self.pick_folder(self.dst_edit))
         files.addRow("MP3 folder", self._row(self.dst_edit, b))
+        self.out_edit = QLineEdit(placeholderText="Default: rekordbox_mp3.xml in the MP3 folder")
+        self.out_edit.editingFinished.connect(self.update_summary)
+        b = QPushButton("Browse…")
+        b.clicked.connect(self.pick_out_xml)
+        files.addRow("Output XML", self._row(self.out_edit, b))
         v.addLayout(files)
 
         split = QSplitter(Qt.Horizontal)
@@ -387,6 +392,7 @@ class MainWindow(QMainWindow):
             xml_path=self.xml_edit.text(),
             src_root=self.src_edit.text().strip() or None,
             dst_root=self.dst_edit.text().strip() or None,
+            out_xml=self.out_edit.text().strip() or None,
             playlists=self.checked_playlists(),
             only_playlists=self.flag_boxes["only_playlists"].isChecked(),
             mode=self.mode(), offset_ms=self.offset_spin.value(),
@@ -416,6 +422,7 @@ class MainWindow(QMainWindow):
         self.summary.setText(
             f"<b>Converting {scope}</b><br>"
             f"Source: {plan.src_root}<br>MP3 folder: {plan.dst_root}<br>"
+            f"Output XML: {plan.out_xml}<br>"
             f"Tracks to convert: <b>{len(plan.jobs)}</b> ({todo} to encode now)<br>"
             f"Already MP3, kept: {len(plan.keep)}<br>"
             f"Skipped: {len(plan.skipped)}<br>"
@@ -572,7 +579,7 @@ class MainWindow(QMainWindow):
 
     # =========================================================================
     # 8. Small helpers: folders, log, help, saved settings
-    # What:  Folder pickers, the log, Help dialogs, and remembering options
+    # What:  Folder and file pickers, the log, Help dialogs, and remembering options
     #        between runs (QSettings: the registry on Windows).
     # Why:   Convenience; nothing here affects the conversion itself.
     # =========================================================================
@@ -581,6 +588,18 @@ class MainWindow(QMainWindow):
         d = QFileDialog.getExistingDirectory(self, "Choose folder", edit.text() or "")
         if d:
             edit.setText(d.replace("\\", "/"))
+            self.update_summary()
+
+    def pick_out_xml(self) -> None:
+        plan = self.current_plan()
+        start = self.out_edit.text() or (plan.out_xml if plan else "")
+        # No overwrite prompt: re-writing the previous output is the normal case,
+        # and make_plan already refuses the collection XML itself.
+        path, _ = QFileDialog.getSaveFileName(self, "Where to write the MP3 XML", start,
+                                              "rekordbox XML (*.xml)",
+                                              options=QFileDialog.Option.DontConfirmOverwrite)
+        if path:
+            self.out_edit.setText(path.replace("\\", "/"))
             self.update_summary()
 
     def open_dst(self) -> None:
@@ -626,7 +645,8 @@ class MainWindow(QMainWindow):
         self.offset_spin.setValue(float(self.cfg.value("offset_ms", 0.0)))
         self.src_edit.setText(self.cfg.value("src", ""))
         self.dst_edit.setText(self.cfg.value("dst", ""))
-        last = self.cfg.value("xml", "")
+        self.out_edit.setText(self.cfg.value("out", ""))
+        last =self.cfg.value("xml", "")
         if last and os.path.exists(last):
             self.open_xml(last)
 
@@ -634,7 +654,7 @@ class MainWindow(QMainWindow):
         for k, v in [("mode", self.mode()), ("bitrate", self.bitrate_combo.currentText()),
                      ("jobs", self.jobs_spin.value()), ("offset_ms", self.offset_spin.value()),
                      ("src", self.src_edit.text()), ("dst", self.dst_edit.text()),
-                     ("xml", self.xml_edit.text())]:
+                     ("out", self.out_edit.text()), ("xml", self.xml_edit.text())]:
             self.cfg.setValue(k, v)
 
     def closeEvent(self, ev) -> None:

@@ -36,7 +36,8 @@ def parse_args(argv):
     ap.add_argument("xml", help="rekordbox collection XML (File > Export Collection in xml format)")
     ap.add_argument("--src-root", help="top folder of the source library (default: detected)")
     ap.add_argument("--dst-root", help='top folder for the MP3 copy (default: "<src-root> MP3")')
-    ap.add_argument("--out", help="output XML (default: <dst-root>/rekordbox_mp3.xml)")
+    ap.add_argument("--out", help="output XML file, or a folder to put rekordbox_mp3.xml in "
+                                  "(default: <dst-root>/rekordbox_mp3.xml)")
     ap.add_argument("--playlist", action="append", default=[], help="only this playlist (repeatable)")
     ap.add_argument("--only-playlists", action="store_true", help="skip tracks in no playlist")
     mode = ap.add_mutually_exclusive_group()

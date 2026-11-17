@@ -17,7 +17,6 @@ C++ reading notes
 
 from __future__ import annotations
 
-import concurrent.futures as cf
 import os
 import re
 import shutil
@@ -25,6 +24,9 @@ import subprocess
 import sys
 import threading
 import time
+# Imported from the submodule on purpose: on Python 3.15, once PySide6 is loaded,
+# `concurrent.futures.ThreadPoolExecutor` comes back as an unresolved lazy import.
+from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
@@ -269,7 +271,7 @@ class Runner:
                 done = self.result.done
             self.progress(done, total, os.path.basename(job.dst), status)
 
-        with cf.ThreadPoolExecutor(max(1, self.s.jobs)) as ex:
+        with ThreadPoolExecutor(max(1, self.s.jobs)) as ex:
             list(ex.map(work, todo))
         self.result.cancelled = self.cancel.is_set()
         return self.result

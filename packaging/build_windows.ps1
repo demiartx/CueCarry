@@ -95,6 +95,9 @@ if ($SkipTests) {
 Step 6 "Building with PyInstaller"
 & $Py -m PyInstaller --noconfirm --clean packaging\cuecarry.spec
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
+# build\ holds PyInstaller's scratch copy of CueCarry.exe, which can't run (no _internal
+# folder) and fails with "Failed to load Python DLL". Remove it so only dist\ has an app.
+Remove-Item -Recurse -Force (Join-Path $Root "build")
 
 # --- 7. Licenses and zip -------------------------------------------------------------
 Step 7 "Adding licenses and zipping"
