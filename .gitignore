@@ -5,3 +5,4 @@ build/
 dist/
 packaging/ffmpeg/
 docs/screenshot-test-library.png
+test-log.txt

@@ -15,6 +15,7 @@
 #   6. Build with PyInstaller
 #   7. Add the license files and zip the result
 
+param([switch]$SkipTests)   # build_windows.bat -SkipTests  builds without running the tests
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
@@ -76,12 +77,19 @@ if ($enc -notmatch "libmp3lame") {
 }
 
 # --- 5. Tests --------------------------------------------------------------------
-Step 5 "Running the tests"
-$env:CUECARRY_FFMPEG = $FfExe
-$env:QT_QPA_PLATFORM = "offscreen"
-& $Py -m pytest -q
-if ($LASTEXITCODE -ne 0) { throw "Tests failed; the app was not built." }
-Remove-Item Env:QT_QPA_PLATFORM
+Step 5 "Running the tests (full output also saved to test-log.txt)"
+if ($SkipTests) {
+    Write-Host "  Skipped (-SkipTests)." -ForegroundColor Yellow
+} else {
+    $env:CUECARRY_FFMPEG = $FfExe
+    $env:QT_QPA_PLATFORM = "offscreen"
+    & $Py -m pytest -v -rfE --tb=short | Tee-Object -FilePath (Join-Path $Root "test-log.txt")
+    $testsFailed = $LASTEXITCODE -ne 0
+    Remove-Item Env:QT_QPA_PLATFORM
+    if ($testsFailed) {
+        throw "Tests failed; the app was not built. Send test-log.txt, or run build_windows.bat -SkipTests to build anyway."
+    }
+}
 
 # --- 6. PyInstaller ----------------------------------------------------------------
 Step 6 "Building with PyInstaller"

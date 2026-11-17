@@ -86,7 +86,7 @@ class Worker(threading.Thread):
             if not out["result"].cancelled:
                 self.bridge.message.emit("Writing the XML…")
                 n, p = core.write_xml(self.lib, self.plan, self.s,
-                                      lambda f: encoder.audio_codec(self.ffmpeg, f) == "alac")
+                                      lambda f: encoder.is_alac(self.ffmpeg, f))
                 out["tracks"], out["playlists"] = n, p
                 if out["result"].failures:
                     log = os.path.splitext(self.plan.out_xml)[0] + "_failures.txt"
@@ -342,7 +342,7 @@ class MainWindow(QMainWindow):
         try:
             self.lib = core.load_library(path)
         except Exception as e:
-            QMessageBox.warning(self, APP_NAME, f"Could not read that XML:\n{e}")
+            self.notify(APP_NAME, f"Could not read that XML:\n{e}")
             return
         self.xml_edit.setText(path)
         self.fill_tree()
@@ -452,7 +452,7 @@ class MainWindow(QMainWindow):
             if not self.lib:
                 return
         if not self.ffmpeg:
-            QMessageBox.warning(self, APP_NAME, "No usable ffmpeg was found. Use Tools > Choose ffmpeg.")
+            self.notify(APP_NAME, "No usable ffmpeg was found. Use Tools > Choose ffmpeg.")
             return
         s = self.settings()
         plan = self.current_plan()
@@ -460,7 +460,7 @@ class MainWindow(QMainWindow):
             return
         todo = 0 if s.xml_only else len(plan.todo(s.overwrite))
         if s.overwrite and todo > 50:
-            if QMessageBox.question(self, APP_NAME, f"Re-encode {todo} tracks, including ones "
+            if self.ask(APP_NAME, f"Re-encode {todo} tracks, including ones "
                                     "already converted?") != QMessageBox.Yes:
                 return
         self._save()
@@ -491,7 +491,7 @@ class MainWindow(QMainWindow):
         r: encoder.RunResult = out["result"]
         if out["error"]:
             self.log("ERROR: " + out["error"])
-            QMessageBox.critical(self, APP_NAME, out["error"])
+            self.notify(APP_NAME, out["error"])
         elif r.cancelled:
             self.log("Stopped. Press Start to continue where it left off.")
         else:
@@ -501,9 +501,8 @@ class MainWindow(QMainWindow):
             self.log(msg)
             if r.failures:
                 self.log(f"Failed tracks are listed in {out.get('failures_file')}")
-            box = QMessageBox(QMessageBox.Information, APP_NAME, msg, parent=self)
-            box.setInformativeText("Next: import the XML into rekordbox (Help > How to import).")
-            box.exec()
+            self.notify(APP_NAME, msg + "\n\nNext: import the XML into rekordbox "
+                        "(Help > How to import).")
         self.update_summary()
 
     # =========================================================================
@@ -524,9 +523,9 @@ class MainWindow(QMainWindow):
         try:
             encoder.make_calibration_tracks(self.ffmpeg, os.path.join(folder, "calibration"))
         except Exception as e:
-            QMessageBox.warning(self, APP_NAME, str(e))
+            self.notify(APP_NAME, str(e))
             return
-        QMessageBox.information(self, APP_NAME, (
+        self.notify(APP_NAME, (
             "Made 4 calibration tracks in:\n" + os.path.join(folder, "calibration") + "\n\n"
             "1. Drag them into rekordbox and let it analyze them.\n"
             "2. File > Export Collection in xml format.\n"
@@ -539,10 +538,10 @@ class MainWindow(QMainWindow):
         try:
             rows = core.read_calibration(path)
         except Exception as e:
-            QMessageBox.warning(self, APP_NAME, str(e))
+            self.notify(APP_NAME, str(e))
             return
         if not rows:
-            QMessageBox.information(self, APP_NAME, "No calibration tracks found in that XML.")
+            self.notify(APP_NAME, "No calibration tracks found in that XML.")
             return
         lines = [f"{t}: grid {g if g is not None else 'not analyzed'}"
                  + (f", {sh:+.1f} ms vs FLAC" if sh is not None else "") for t, g, sh in rows]
@@ -554,7 +553,7 @@ class MainWindow(QMainWindow):
             else:
                 verdict = (f"\n\nResult: this rekordbox differs from the tested one. "
                            f"Try Fixed offset {shift['CAL C']:.0f} ms, and please report it.")
-        QMessageBox.information(self, APP_NAME, "\n".join(lines) + verdict)
+        self.notify(APP_NAME, "\n".join(lines) + verdict)
 
     def find_ffmpeg(self) -> None:
         self.ffmpeg, msg = encoder.find_ffmpeg(self.cfg.value("ffmpeg") or None)
@@ -569,7 +568,7 @@ class MainWindow(QMainWindow):
                 self.cfg.setValue("ffmpeg", path)
                 self.find_ffmpeg()
             else:
-                QMessageBox.warning(self, APP_NAME, "That ffmpeg has no MP3 encoder (libmp3lame).")
+                self.notify(APP_NAME, "That ffmpeg has no MP3 encoder (libmp3lame).")
 
     # =========================================================================
     # 8. Small helpers: folders, log, help, saved settings
@@ -592,11 +591,26 @@ class MainWindow(QMainWindow):
     def log(self, text: str) -> None:
         self.log_view.appendPlainText(text)
 
+    # Every dialog goes through notify/ask. With CUECARRY_NO_DIALOGS set (the
+    # tests set it), they only write to the log, so a test can never hang on
+    # a dialog nobody can click.
+    def notify(self, title: str, text: str) -> None:
+        if os.environ.get("CUECARRY_NO_DIALOGS"):
+            self.log(f"[dialog] {title}: {text}")
+            return
+        QMessageBox.information(self, title, text)
+
+    def ask(self, title: str, text: str) -> QMessageBox.StandardButton:
+        if os.environ.get("CUECARRY_NO_DIALOGS"):
+            self.log(f"[question, answered Yes] {title}: {text}")
+            return QMessageBox.Yes
+        return QMessageBox.question(self, title, text)
+
     def show_import_steps(self) -> None:
-        QMessageBox.information(self, "Import into rekordbox", IMPORT_STEPS)
+        self.notify("Import into rekordbox", IMPORT_STEPS)
 
     def show_about(self) -> None:
-        QMessageBox.about(self, f"About {APP_NAME}", (
+        self.notify(f"About {APP_NAME}", (
             f"<b>{APP_NAME} {VERSION}</b><br>Makes an MP3 copy of a rekordbox library "
             "with cues, grids, ratings and playlists.<br><br>"
             "License: GNU GPL v3.0 or later (see LICENSE).<br>"
@@ -625,7 +639,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, ev) -> None:
         if self.worker and self.worker.is_alive():
-            if QMessageBox.question(self, APP_NAME, "A conversion is running. Stop it and quit?") \
+            if self.ask(APP_NAME, "A conversion is running. Stop it and quit?") \
                     != QMessageBox.Yes:
                 ev.ignore()
                 return

@@ -95,10 +95,10 @@ def library(tmp_path):
     return tmp_path, str(xml), str(music)
 
 
-def first_onset_ms(path, honor_header=True):
+def first_onset_ms(path):
+    """Where the first kick is, in ms, as a decoder hears it. The MP3s are made
+    without a LAME header, so every decoder hears the same thing."""
     args = [FFMPEG, "-loglevel", "error"]
-    if not honor_header:
-        args += ["-flags2", "+skip_manual"]
     raw = subprocess.run(args + ["-i", path, "-f", "s16le", "-ac", "1", "-ar", "44100", "-"],
                          capture_output=True).stdout
     a = array.array("h", raw)
@@ -151,11 +151,9 @@ def test_compensate_run(library):
     # playlists copied with suffix, inside folder "MP3"
     names = [n.get("Name") for n in ET.parse(out).getroot().iter("NODE")]
     assert "MP3" in names and "Set (MP3)" in names and "Inner (MP3)" in names
-    # the shifted cue matches where the kick really is, whether or not a
-    # player reads the header (there is none)
+    # the shifted cue matches where the kick really is (no header to skip)
     mp3 = core.loc_to_path(t["Title 1"].get("Location"))
-    for honor in (True, False):
-        assert abs(first_onset_ms(mp3, honor) - 1025.1) < 1.0
+    assert abs(first_onset_ms(mp3) - 1025.1) < 1.0
     # cover art carried over
     probe = subprocess.run([FFMPEG, "-hide_banner", "-i", mp3], capture_output=True, text=True).stderr
     assert "Video: png" in probe or "Video: mjpeg" in probe
@@ -170,7 +168,7 @@ def test_align_run(library):
     t = tracks_by_name(os.path.join(music + " MP3", "rekordbox_mp3.xml"))
     assert t["Title 1"].find("POSITION_MARK").get("Start") == "1.000"
     mp3 = core.loc_to_path(t["Title 1"].get("Location"))
-    assert abs(first_onset_ms(mp3, False) - 1000.0) < 1.0
+    assert abs(first_onset_ms(mp3) - 1000.0) < 1.0
 
 
 def test_rerun_skips_and_xml_only(library):
@@ -198,3 +196,31 @@ def test_calibration_round_trip(tmp_path):
     ET.ElementTree(root).write(x)
     shifts = {r[0][:5]: r[2] for r in core.read_calibration(str(x))}
     assert shifts == {"CAL A": 0.0, "CAL B": 25.0, "CAL C": 25.0, "CAL D": 0.0}
+
+
+def test_locked_file_and_errors_do_not_stop_the_run(library, monkeypatch):
+    """Windows can lock a just-written file for a moment; a crash in one track
+    must become that track's failure, not stop the whole run."""
+    tmp, xml, music = library
+    real_replace = os.replace
+    calls = {"n": 0}
+
+    def flaky_replace(a, b):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise PermissionError("[WinError 32] file in use")
+        return real_replace(a, b)
+    monkeypatch.setattr(encoder.time, "sleep", lambda s: None)
+    monkeypatch.setattr(encoder.os, "replace", flaky_replace)
+    real_codec = encoder.audio_codec
+
+    def broken_probe(ff, path):
+        if "alac" in path:
+            raise RuntimeError("probe exploded")
+        return real_codec(ff, path)
+    monkeypatch.setattr(encoder, "audio_codec", broken_probe)
+    rc = cli.main([xml, "--src-root", music, "--playlist", "Set"])
+    assert rc == 1                                   # one failure reported, run finished
+    assert os.path.exists(os.path.join(music + " MP3", "A", "flac track.mp3"))
+    with open(os.path.join(music + " MP3", "rekordbox_mp3_failures.txt"), encoding="utf-8") as f:
+        assert "RuntimeError: probe exploded" in f.read()

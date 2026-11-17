@@ -118,7 +118,7 @@ def main(argv=None) -> int:
             print("\nStopped. Run the same command again to continue.")
             return 130
     n_tracks, n_pl = core.write_xml(lib, plan, s,
-                                    lambda p: encoder.audio_codec(ffmpeg, p) == "alac")
+                                    lambda p: encoder.is_alac(ffmpeg, p))
     print(f"\nWrote {plan.out_xml}: {n_tracks} tracks, {n_pl} playlists.")
     if result.failures:
         log = os.path.splitext(plan.out_xml)[0] + "_failures.txt"

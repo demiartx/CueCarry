@@ -451,220 +451,249 @@ C++ reading notes
     handle; `.communicate()` waits for it and collects its output.
   - `ThreadPoolExecutor` is a fixed pool of worker threads, like a std::thread
     pool pulling tasks off a queue.
-  - `threading.Event` is a thread-safe bool flag (here: &quot;Stop was pressed&quot;).</pre></div><div class="sec" id="app-encoder-py-1"><div class="expl"><h3>1. Finding ffmpeg</h3><p><span class="tag what">What</span> Look for ffmpeg next to the app first (the bundled copy), then on PATH.</p><p><span class="tag why">Why</span> The packaged app ships its own ffmpeg, so users install nothing. When run from source, a full ffmpeg on PATH works too.</p><p><span class="tag wrong">If it goes wrong</span> &quot;ffmpeg has no MP3 encoder&quot; means a stripped-down copy was found (for example a Microsoft Store alias in ...\WindowsApps). Pick a full build in Tools &gt; Choose ffmpeg.</p></div><div class="code"><pre><span class="row"><span class="ln">45</span>
-</span><span class="row"><span class="ln">46</span><span class="k">def</span> bundled_ffmpeg() -&gt; Optional[str]:
-</span><span class="row"><span class="ln">47</span>    <span class="d">&quot;&quot;&quot;Path of the ffmpeg shipped inside the packaged app, if any.&quot;&quot;&quot;</span>
-</span><span class="row"><span class="ln">48</span>    exe = <span class="s">&quot;ffmpeg.exe&quot;</span> <span class="k">if</span> sys.platform == <span class="s">&quot;win32&quot;</span> <span class="k">else</span> <span class="s">&quot;ffmpeg&quot;</span>
-</span><span class="row"><span class="ln">49</span>    bases = []
-</span><span class="row"><span class="ln">50</span>    <span class="k">if</span> getattr(sys, <span class="s">&quot;frozen&quot;</span>, <span class="k">False</span>):                 <span class="c"># running as the packaged app</span>
-</span><span class="row"><span class="ln">51</span>        bases.append(getattr(sys, <span class="s">&quot;_MEIPASS&quot;</span>, os.path.dirname(sys.executable)))
-</span><span class="row"><span class="ln">52</span>        bases.append(os.path.dirname(sys.executable))
-</span><span class="row"><span class="ln">53</span>    bases.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), <span class="s">&quot;..&quot;</span>))
-</span><span class="row"><span class="ln">54</span>    <span class="k">for</span> b <span class="k">in</span> bases:
-</span><span class="row"><span class="ln">55</span>        p = os.path.join(b, <span class="s">&quot;ffmpeg&quot;</span>, exe)
-</span><span class="row"><span class="ln">56</span>        <span class="k">if</span> os.path.isfile(p):
-</span><span class="row"><span class="ln">57</span>            <span class="k">return</span> os.path.abspath(p)
-</span><span class="row"><span class="ln">58</span>    <span class="k">return</span> <span class="k">None</span>
-</span><span class="row"><span class="ln">59</span>
+  - `threading.Event` is a thread-safe bool flag (here: &quot;Stop was pressed&quot;).</pre></div><div class="sec" id="app-encoder-py-1"><div class="expl"><h3>1. Finding ffmpeg</h3><p><span class="tag what">What</span> Look for ffmpeg next to the app first (the bundled copy), then on PATH.</p><p><span class="tag why">Why</span> The packaged app ships its own ffmpeg, so users install nothing. When run from source, a full ffmpeg on PATH works too.</p><p><span class="tag wrong">If it goes wrong</span> &quot;ffmpeg has no MP3 encoder&quot; means a stripped-down copy was found (for example a Microsoft Store alias in ...\WindowsApps). Pick a full build in Tools &gt; Choose ffmpeg.</p></div><div class="code"><pre><span class="row"><span class="ln">46</span>
+</span><span class="row"><span class="ln">47</span><span class="k">def</span> bundled_ffmpeg() -&gt; Optional[str]:
+</span><span class="row"><span class="ln">48</span>    <span class="d">&quot;&quot;&quot;Path of the ffmpeg shipped inside the packaged app, if any.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">49</span>    exe = <span class="s">&quot;ffmpeg.exe&quot;</span> <span class="k">if</span> sys.platform == <span class="s">&quot;win32&quot;</span> <span class="k">else</span> <span class="s">&quot;ffmpeg&quot;</span>
+</span><span class="row"><span class="ln">50</span>    bases = []
+</span><span class="row"><span class="ln">51</span>    <span class="k">if</span> getattr(sys, <span class="s">&quot;frozen&quot;</span>, <span class="k">False</span>):                 <span class="c"># running as the packaged app</span>
+</span><span class="row"><span class="ln">52</span>        bases.append(getattr(sys, <span class="s">&quot;_MEIPASS&quot;</span>, os.path.dirname(sys.executable)))
+</span><span class="row"><span class="ln">53</span>        bases.append(os.path.dirname(sys.executable))
+</span><span class="row"><span class="ln">54</span>    bases.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), <span class="s">&quot;..&quot;</span>))
+</span><span class="row"><span class="ln">55</span>    <span class="k">for</span> b <span class="k">in</span> bases:
+</span><span class="row"><span class="ln">56</span>        p = os.path.join(b, <span class="s">&quot;ffmpeg&quot;</span>, exe)
+</span><span class="row"><span class="ln">57</span>        <span class="k">if</span> os.path.isfile(p):
+</span><span class="row"><span class="ln">58</span>            <span class="k">return</span> os.path.abspath(p)
+</span><span class="row"><span class="ln">59</span>    <span class="k">return</span> <span class="k">None</span>
 </span><span class="row"><span class="ln">60</span>
-</span><span class="row"><span class="ln">61</span><span class="k">def</span> has_mp3_encoder(ffmpeg: str) -&gt; bool:
-</span><span class="row"><span class="ln">62</span>    <span class="k">try</span>:
-</span><span class="row"><span class="ln">63</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-encoders&quot;</span>], capture_output=<span class="k">True</span>,
-</span><span class="row"><span class="ln">64</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">30</span>)
-</span><span class="row"><span class="ln">65</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
-</span><span class="row"><span class="ln">66</span>        <span class="k">return</span> <span class="k">False</span>
-</span><span class="row"><span class="ln">67</span>    <span class="k">return</span> <span class="s">&quot;libmp3lame&quot;</span> <span class="k">in</span> r.stdout
-</span><span class="row"><span class="ln">68</span>
+</span><span class="row"><span class="ln">61</span>
+</span><span class="row"><span class="ln">62</span><span class="k">def</span> has_mp3_encoder(ffmpeg: str) -&gt; bool:
+</span><span class="row"><span class="ln">63</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">64</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-encoders&quot;</span>], capture_output=<span class="k">True</span>,
+</span><span class="row"><span class="ln">65</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">30</span>)
+</span><span class="row"><span class="ln">66</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
+</span><span class="row"><span class="ln">67</span>        <span class="k">return</span> <span class="k">False</span>
+</span><span class="row"><span class="ln">68</span>    <span class="k">return</span> <span class="s">&quot;libmp3lame&quot;</span> <span class="k">in</span> r.stdout
 </span><span class="row"><span class="ln">69</span>
-</span><span class="row"><span class="ln">70</span><span class="k">def</span> find_ffmpeg(preferred: Optional[str] = <span class="k">None</span>) -&gt; tuple:
-</span><span class="row"><span class="ln">71</span>    <span class="d">&quot;&quot;&quot;Returns (path or None, message). Tries: preferred, bundled, PATH.&quot;&quot;&quot;</span>
-</span><span class="row"><span class="ln">72</span>    tried = []
-</span><span class="row"><span class="ln">73</span>    <span class="k">for</span> cand <span class="k">in</span> [preferred, os.environ.get(<span class="s">&quot;CUECARRY_FFMPEG&quot;</span>), bundled_ffmpeg(), shutil.which(<span class="s">&quot;ffmpeg&quot;</span>)]:
-</span><span class="row"><span class="ln">74</span>        <span class="k">if</span> cand <span class="k">and</span> cand <span class="k">not</span> <span class="k">in</span> tried:
-</span><span class="row"><span class="ln">75</span>            tried.append(cand)
-</span><span class="row"><span class="ln">76</span>            <span class="k">if</span> has_mp3_encoder(cand):
-</span><span class="row"><span class="ln">77</span>                <span class="k">return</span> cand, f&quot;Using ffmpeg: {cand}&quot;
-</span><span class="row"><span class="ln">78</span>    <span class="k">if</span> tried:
-</span><span class="row"><span class="ln">79</span>        <span class="k">return</span> <span class="k">None</span>, (<span class="s">&quot;No ffmpeg with an MP3 encoder (libmp3lame) was found. Checked:\n  &quot;</span>
-</span><span class="row"><span class="ln">80</span>                      + <span class="s">&quot;\n  &quot;</span>.join(tried))
-</span><span class="row"><span class="ln">81</span>    <span class="k">return</span> <span class="k">None</span>, <span class="s">&quot;ffmpeg was not found.&quot;</span>
-</span></pre></div></div><div class="sec" id="app-encoder-py-2"><div class="expl"><h3>2. Asking ffmpeg about a file</h3><p><span class="tag what">What</span> Read the codec name of an .m4a file (ALAC or AAC).</p><p><span class="tag why">Why</span> .m4a can hold lossless ALAC or lossy AAC. Converting AAC to MP3 would stack two lossy encodes, so AAC files are kept as they are.</p><p><span class="tag wrong">If it goes wrong</span> an unreadable file counts as &quot;not ALAC&quot; and is kept as-is.</p></div><div class="code"><pre><span class="row"><span class="ln">91</span>
-</span><span class="row"><span class="ln">92</span><span class="k">def</span> audio_codec(ffmpeg: str, path: str) -&gt; str:
-</span><span class="row"><span class="ln">93</span>    <span class="k">try</span>:
-</span><span class="row"><span class="ln">94</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-i&quot;</span>, path], capture_output=<span class="k">True</span>,
-</span><span class="row"><span class="ln">95</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">60</span>)
-</span><span class="row"><span class="ln">96</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
-</span><span class="row"><span class="ln">97</span>        <span class="k">return</span> <span class="s">&quot;&quot;</span>
-</span><span class="row"><span class="ln">98</span>    m = re.search(<span class="s">r&quot;Audio:\s*([A-Za-z0-9_]+)&quot;</span>, r.stderr)
-</span><span class="row"><span class="ln">99</span>    <span class="k">return</span> m.group(<span class="n">1</span>).lower() <span class="k">if</span> m <span class="k">else</span> <span class="s">&quot;&quot;</span>
-</span></pre></div></div><div class="sec" id="app-encoder-py-3"><div class="expl"><h3>3. Building one ffmpeg command</h3><p><span class="tag what">What</span> The exact ffmpeg arguments for one track.</p><p><span class="tag why">Why</span> - 320 kbps constant bitrate, best encoder quality (-compression_level 0) - ID3v2.3 tags (the version DJ software reads most reliably) - cover art copied when present - tags from the rekordbox XML override the file&#x27;s own tags - compensate/align modes leave out the LAME header (-write_xing 0) so every player sees the same start delay - align mode trims the delay off the start (atrim) - rates above 48 kHz are resampled, since MP3 stops at 48 kHz</p><p><span class="tag wrong">If it goes wrong</span> the ffmpeg error is shown in the log and saved in the failures file; the first attempt keeps cover art, the second drops it.</p></div><div class="code"><pre><span class="row"><span class="ln">116</span>
-</span><span class="row"><span class="ln">117</span>TAG_MAP = [  <span class="c"># (rekordbox XML attribute, ID3 key ffmpeg understands)</span>
-</span><span class="row"><span class="ln">118</span>    (<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;title&quot;</span>), (<span class="s">&quot;Artist&quot;</span>, <span class="s">&quot;artist&quot;</span>), (<span class="s">&quot;Album&quot;</span>, <span class="s">&quot;album&quot;</span>),
-</span><span class="row"><span class="ln">119</span>    (<span class="s">&quot;Genre&quot;</span>, <span class="s">&quot;genre&quot;</span>), (<span class="s">&quot;Composer&quot;</span>, <span class="s">&quot;composer&quot;</span>), (<span class="s">&quot;Comments&quot;</span>, <span class="s">&quot;comment&quot;</span>),
-</span><span class="row"><span class="ln">120</span>    (<span class="s">&quot;Label&quot;</span>, <span class="s">&quot;publisher&quot;</span>), (<span class="s">&quot;Remixer&quot;</span>, <span class="s">&quot;TPE4&quot;</span>), (<span class="s">&quot;Grouping&quot;</span>, <span class="s">&quot;TIT1&quot;</span>),
-</span><span class="row"><span class="ln">121</span>    (<span class="s">&quot;Tonality&quot;</span>, <span class="s">&quot;TKEY&quot;</span>),
-</span><span class="row"><span class="ln">122</span>]
-</span><span class="row"><span class="ln">123</span>
-</span><span class="row"><span class="ln">124</span>
-</span><span class="row"><span class="ln">125</span><span class="k">def</span> tag_args(attrs: Dict[str, str]) -&gt; List[str]:
-</span><span class="row"><span class="ln">126</span>    args: List[str] = []
-</span><span class="row"><span class="ln">127</span>    <span class="k">for</span> attr, key <span class="k">in</span> TAG_MAP:
-</span><span class="row"><span class="ln">128</span>        v = attrs.get(attr, <span class="s">&quot;&quot;</span>)
-</span><span class="row"><span class="ln">129</span>        <span class="k">if</span> v:
-</span><span class="row"><span class="ln">130</span>            args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;{key}={v}&quot;]
-</span><span class="row"><span class="ln">131</span>    year = attrs.get(<span class="s">&quot;Year&quot;</span>, <span class="s">&quot;0&quot;</span>)
-</span><span class="row"><span class="ln">132</span>    <span class="k">if</span> year <span class="k">and</span> year != <span class="s">&quot;0&quot;</span>:
-</span><span class="row"><span class="ln">133</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;date={year}&quot;]
-</span><span class="row"><span class="ln">134</span>    <span class="k">try</span>:
-</span><span class="row"><span class="ln">135</span>        bpm = float(attrs.get(<span class="s">&quot;AverageBpm&quot;</span>, <span class="s">&quot;0&quot;</span>) <span class="k">or</span> <span class="n">0</span>)
-</span><span class="row"><span class="ln">136</span>    <span class="k">except</span> ValueError:
-</span><span class="row"><span class="ln">137</span>        bpm = <span class="n">0</span>
-</span><span class="row"><span class="ln">138</span>    <span class="k">if</span> bpm &gt; <span class="n">0</span>:
-</span><span class="row"><span class="ln">139</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;TBPM={round(bpm)}&quot;]
-</span><span class="row"><span class="ln">140</span>    <span class="k">return</span> args
-</span><span class="row"><span class="ln">141</span>
-</span><span class="row"><span class="ln">142</span>
-</span><span class="row"><span class="ln">143</span><span class="k">def</span> ffmpeg_commands(ffmpeg: str, job: Job, s: Settings, tmp: str) -&gt; List[List[str]]:
-</span><span class="row"><span class="ln">144</span>    attrs = job.track.element.attrib
-</span><span class="row"><span class="ln">145</span>    base = [ffmpeg, <span class="s">&quot;-nostdin&quot;</span>, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, job.track.path]
-</span><span class="row"><span class="ln">146</span>    audio = [<span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, s.bitrate, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
-</span><span class="row"><span class="ln">147</span>             <span class="s">&quot;-map_metadata&quot;</span>, <span class="s">&quot;0&quot;</span>, <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>, <span class="s">&quot;-write_id3v1&quot;</span>, <span class="s">&quot;1&quot;</span>]
-</span><span class="row"><span class="ln">148</span>    rate = int(float(attrs.get(<span class="s">&quot;SampleRate&quot;</span>) <span class="k">or</span> <span class="n">0</span>) <span class="k">or</span> <span class="n">0</span>)
-</span><span class="row"><span class="ln">149</span>    <span class="k">if</span> rate &gt; <span class="n">48000</span>:
-</span><span class="row"><span class="ln">150</span>        audio += [<span class="s">&quot;-ar&quot;</span>, str(mp3_sample_rate(rate))]
-</span><span class="row"><span class="ln">151</span>    <span class="k">if</span> s.mode == <span class="s">&quot;align&quot;</span>:
-</span><span class="row"><span class="ln">152</span>        audio += [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={s.trim_samples},asetpts=PTS-STARTPTS&quot;]
-</span><span class="row"><span class="ln">153</span>    <span class="k">if</span> s.mode <span class="k">in</span> (<span class="s">&quot;compensate&quot;</span>, <span class="s">&quot;align&quot;</span>):
-</span><span class="row"><span class="ln">154</span>        audio += [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]
-</span><span class="row"><span class="ln">155</span>    tail = tag_args(attrs) + [<span class="s">&quot;-f&quot;</span>, <span class="s">&quot;mp3&quot;</span>, tmp]
-</span><span class="row"><span class="ln">156</span>    with_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>, <span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:v?&quot;</span>, <span class="s">&quot;-c:v&quot;</span>, <span class="s">&quot;copy&quot;</span>, <span class="s">&quot;-disposition:v&quot;</span>, <span class="s">&quot;attached_pic&quot;</span>]
-</span><span class="row"><span class="ln">157</span>    no_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>]
-</span><span class="row"><span class="ln">158</span>    <span class="k">return</span> [base + with_art + audio + tail, base + no_art + audio + tail]
-</span></pre></div></div><div class="sec" id="app-encoder-py-4"><div class="expl"><h3>4. Running the whole plan</h3><p><span class="tag what">What</span> Encode every job on a pool of threads, report progress after each track, and stop cleanly when asked.</p><p><span class="tag why">Why</span> Encoding is the slow part; one ffmpeg per CPU core keeps the machine busy. Each MP3 is written as &quot;name.mp3.part&quot; and renamed when done, so a stopped run never leaves a half-written MP3 behind.</p><p><span class="tag wrong">If it goes wrong</span> failures are collected with their ffmpeg error; running again retries only what is missing.</p></div><div class="code"><pre><span class="row"><span class="ln">171</span>
-</span><span class="row"><span class="ln">172</span>@dataclass
-</span><span class="row"><span class="ln">173</span><span class="k">class</span> RunResult:
-</span><span class="row"><span class="ln">174</span>    done: int = <span class="n">0</span>
-</span><span class="row"><span class="ln">175</span>    converted: int = <span class="n">0</span>
-</span><span class="row"><span class="ln">176</span>    kept_aac: int = <span class="n">0</span>
-</span><span class="row"><span class="ln">177</span>    failures: List[tuple] = field(default_factory=list)    <span class="c"># (source path, error)</span>
-</span><span class="row"><span class="ln">178</span>    cancelled: bool = <span class="k">False</span>
-</span><span class="row"><span class="ln">179</span>
-</span><span class="row"><span class="ln">180</span>
-</span><span class="row"><span class="ln">181</span>ProgressFn = Callable[[int, int, str, str], <span class="k">None</span>]   <span class="c"># (done, total, file name, status)</span>
-</span><span class="row"><span class="ln">182</span>
-</span><span class="row"><span class="ln">183</span>
-</span><span class="row"><span class="ln">184</span><span class="k">class</span> Runner:
-</span><span class="row"><span class="ln">185</span>    <span class="k">def</span> __init__(self, ffmpeg: str, plan: Plan, s: Settings,
-</span><span class="row"><span class="ln">186</span>                 progress: ProgressFn, cancel: Optional[threading.Event] = <span class="k">None</span>):
-</span><span class="row"><span class="ln">187</span>        self.ffmpeg, self.plan, self.s, self.progress = ffmpeg, plan, s, progress
-</span><span class="row"><span class="ln">188</span>        self.cancel = cancel <span class="k">or</span> threading.Event()
-</span><span class="row"><span class="ln">189</span>        self.lock = threading.Lock()
-</span><span class="row"><span class="ln">190</span>        self.procs: set = set()
-</span><span class="row"><span class="ln">191</span>        self.result = RunResult()
+</span><span class="row"><span class="ln">70</span>
+</span><span class="row"><span class="ln">71</span><span class="k">def</span> find_ffmpeg(preferred: Optional[str] = <span class="k">None</span>) -&gt; tuple:
+</span><span class="row"><span class="ln">72</span>    <span class="d">&quot;&quot;&quot;Returns (path or None, message). Tries: preferred, bundled, PATH.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">73</span>    tried = []
+</span><span class="row"><span class="ln">74</span>    <span class="k">for</span> cand <span class="k">in</span> [preferred, os.environ.get(<span class="s">&quot;CUECARRY_FFMPEG&quot;</span>), bundled_ffmpeg(), shutil.which(<span class="s">&quot;ffmpeg&quot;</span>)]:
+</span><span class="row"><span class="ln">75</span>        <span class="k">if</span> cand <span class="k">and</span> cand <span class="k">not</span> <span class="k">in</span> tried:
+</span><span class="row"><span class="ln">76</span>            tried.append(cand)
+</span><span class="row"><span class="ln">77</span>            <span class="k">if</span> has_mp3_encoder(cand):
+</span><span class="row"><span class="ln">78</span>                <span class="k">return</span> cand, f&quot;Using ffmpeg: {cand}&quot;
+</span><span class="row"><span class="ln">79</span>    <span class="k">if</span> tried:
+</span><span class="row"><span class="ln">80</span>        <span class="k">return</span> <span class="k">None</span>, (<span class="s">&quot;No ffmpeg with an MP3 encoder (libmp3lame) was found. Checked:\n  &quot;</span>
+</span><span class="row"><span class="ln">81</span>                      + <span class="s">&quot;\n  &quot;</span>.join(tried))
+</span><span class="row"><span class="ln">82</span>    <span class="k">return</span> <span class="k">None</span>, <span class="s">&quot;ffmpeg was not found.&quot;</span>
+</span></pre></div></div><div class="sec" id="app-encoder-py-2"><div class="expl"><h3>2. Asking ffmpeg about a file</h3><p><span class="tag what">What</span> Read the codec name of an .m4a file (ALAC or AAC).</p><p><span class="tag why">Why</span> .m4a can hold lossless ALAC or lossy AAC. Converting AAC to MP3 would stack two lossy encodes, so AAC files are kept as they are.</p><p><span class="tag wrong">If it goes wrong</span> an unreadable file counts as &quot;not ALAC&quot; and is kept as-is.</p></div><div class="code"><pre><span class="row"><span class="ln">92</span>
+</span><span class="row"><span class="ln">93</span><span class="k">def</span> audio_codec(ffmpeg: str, path: str) -&gt; str:
+</span><span class="row"><span class="ln">94</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">95</span>        r = subprocess.run([ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-i&quot;</span>, path], capture_output=<span class="k">True</span>,
+</span><span class="row"><span class="ln">96</span>                           text=<span class="k">True</span>, errors=<span class="s">&quot;replace&quot;</span>, creationflags=NO_WINDOW, timeout=<span class="n">60</span>)
+</span><span class="row"><span class="ln">97</span>    <span class="k">except</span> (OSError, subprocess.TimeoutExpired):
+</span><span class="row"><span class="ln">98</span>        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">99</span>    m = re.search(<span class="s">r&quot;Audio:\s*([A-Za-z0-9_]+)&quot;</span>, r.stderr)
+</span><span class="row"><span class="ln">100</span>    <span class="k">return</span> m.group(<span class="n">1</span>).lower() <span class="k">if</span> m <span class="k">else</span> <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">101</span>
+</span><span class="row"><span class="ln">102</span>
+</span><span class="row"><span class="ln">103</span><span class="k">def</span> is_alac(ffmpeg: str, path: str) -&gt; bool:
+</span><span class="row"><span class="ln">104</span>    <span class="d">&quot;&quot;&quot;True only if the file is readable and holds ALAC; never raises.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">105</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">106</span>        <span class="k">return</span> audio_codec(ffmpeg, path) == <span class="s">&quot;alac&quot;</span>
+</span><span class="row"><span class="ln">107</span>    <span class="k">except</span> Exception:   <span class="c"># noqa: BLE001</span>
+</span><span class="row"><span class="ln">108</span>        <span class="k">return</span> <span class="k">False</span>
+</span></pre></div></div><div class="sec" id="app-encoder-py-3"><div class="expl"><h3>3. Building one ffmpeg command</h3><p><span class="tag what">What</span> The exact ffmpeg arguments for one track.</p><p><span class="tag why">Why</span> - 320 kbps constant bitrate, best encoder quality (-compression_level 0) - ID3v2.3 tags (the version DJ software reads most reliably) - cover art copied when present - tags from the rekordbox XML override the file&#x27;s own tags - compensate/align modes leave out the LAME header (-write_xing 0) so every player sees the same start delay - align mode trims the delay off the start (atrim) - rates above 48 kHz are resampled, since MP3 stops at 48 kHz</p><p><span class="tag wrong">If it goes wrong</span> the ffmpeg error is shown in the log and saved in the failures file; the first attempt keeps cover art, the second drops it.</p></div><div class="code"><pre><span class="row"><span class="ln">125</span>
+</span><span class="row"><span class="ln">126</span>TAG_MAP = [  <span class="c"># (rekordbox XML attribute, ID3 key ffmpeg understands)</span>
+</span><span class="row"><span class="ln">127</span>    (<span class="s">&quot;Name&quot;</span>, <span class="s">&quot;title&quot;</span>), (<span class="s">&quot;Artist&quot;</span>, <span class="s">&quot;artist&quot;</span>), (<span class="s">&quot;Album&quot;</span>, <span class="s">&quot;album&quot;</span>),
+</span><span class="row"><span class="ln">128</span>    (<span class="s">&quot;Genre&quot;</span>, <span class="s">&quot;genre&quot;</span>), (<span class="s">&quot;Composer&quot;</span>, <span class="s">&quot;composer&quot;</span>), (<span class="s">&quot;Comments&quot;</span>, <span class="s">&quot;comment&quot;</span>),
+</span><span class="row"><span class="ln">129</span>    (<span class="s">&quot;Label&quot;</span>, <span class="s">&quot;publisher&quot;</span>), (<span class="s">&quot;Remixer&quot;</span>, <span class="s">&quot;TPE4&quot;</span>), (<span class="s">&quot;Grouping&quot;</span>, <span class="s">&quot;TIT1&quot;</span>),
+</span><span class="row"><span class="ln">130</span>    (<span class="s">&quot;Tonality&quot;</span>, <span class="s">&quot;TKEY&quot;</span>),
+</span><span class="row"><span class="ln">131</span>]
+</span><span class="row"><span class="ln">132</span>
+</span><span class="row"><span class="ln">133</span>
+</span><span class="row"><span class="ln">134</span><span class="k">def</span> tag_args(attrs: Dict[str, str]) -&gt; List[str]:
+</span><span class="row"><span class="ln">135</span>    args: List[str] = []
+</span><span class="row"><span class="ln">136</span>    <span class="k">for</span> attr, key <span class="k">in</span> TAG_MAP:
+</span><span class="row"><span class="ln">137</span>        v = attrs.get(attr, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">138</span>        <span class="k">if</span> v:
+</span><span class="row"><span class="ln">139</span>            args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;{key}={v}&quot;]
+</span><span class="row"><span class="ln">140</span>    year = attrs.get(<span class="s">&quot;Year&quot;</span>, <span class="s">&quot;0&quot;</span>)
+</span><span class="row"><span class="ln">141</span>    <span class="k">if</span> year <span class="k">and</span> year != <span class="s">&quot;0&quot;</span>:
+</span><span class="row"><span class="ln">142</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;date={year}&quot;]
+</span><span class="row"><span class="ln">143</span>    <span class="k">try</span>:
+</span><span class="row"><span class="ln">144</span>        bpm = float(attrs.get(<span class="s">&quot;AverageBpm&quot;</span>, <span class="s">&quot;0&quot;</span>) <span class="k">or</span> <span class="n">0</span>)
+</span><span class="row"><span class="ln">145</span>    <span class="k">except</span> ValueError:
+</span><span class="row"><span class="ln">146</span>        bpm = <span class="n">0</span>
+</span><span class="row"><span class="ln">147</span>    <span class="k">if</span> bpm &gt; <span class="n">0</span>:
+</span><span class="row"><span class="ln">148</span>        args += [<span class="s">&quot;-metadata&quot;</span>, f&quot;TBPM={round(bpm)}&quot;]
+</span><span class="row"><span class="ln">149</span>    <span class="k">return</span> args
+</span><span class="row"><span class="ln">150</span>
+</span><span class="row"><span class="ln">151</span>
+</span><span class="row"><span class="ln">152</span><span class="k">def</span> ffmpeg_commands(ffmpeg: str, job: Job, s: Settings, tmp: str) -&gt; List[List[str]]:
+</span><span class="row"><span class="ln">153</span>    attrs = job.track.element.attrib
+</span><span class="row"><span class="ln">154</span>    base = [ffmpeg, <span class="s">&quot;-nostdin&quot;</span>, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, job.track.path]
+</span><span class="row"><span class="ln">155</span>    audio = [<span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, s.bitrate, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
+</span><span class="row"><span class="ln">156</span>             <span class="s">&quot;-map_metadata&quot;</span>, <span class="s">&quot;0&quot;</span>, <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>, <span class="s">&quot;-write_id3v1&quot;</span>, <span class="s">&quot;1&quot;</span>]
+</span><span class="row"><span class="ln">157</span>    rate = int(float(attrs.get(<span class="s">&quot;SampleRate&quot;</span>) <span class="k">or</span> <span class="n">0</span>) <span class="k">or</span> <span class="n">0</span>)
+</span><span class="row"><span class="ln">158</span>    <span class="k">if</span> rate &gt; <span class="n">48000</span>:
+</span><span class="row"><span class="ln">159</span>        audio += [<span class="s">&quot;-ar&quot;</span>, str(mp3_sample_rate(rate))]
+</span><span class="row"><span class="ln">160</span>    <span class="k">if</span> s.mode == <span class="s">&quot;align&quot;</span>:
+</span><span class="row"><span class="ln">161</span>        audio += [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={s.trim_samples},asetpts=PTS-STARTPTS&quot;]
+</span><span class="row"><span class="ln">162</span>    <span class="k">if</span> s.mode <span class="k">in</span> (<span class="s">&quot;compensate&quot;</span>, <span class="s">&quot;align&quot;</span>):
+</span><span class="row"><span class="ln">163</span>        audio += [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]
+</span><span class="row"><span class="ln">164</span>    tail = tag_args(attrs) + [<span class="s">&quot;-f&quot;</span>, <span class="s">&quot;mp3&quot;</span>, tmp]
+</span><span class="row"><span class="ln">165</span>    with_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>, <span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:v?&quot;</span>, <span class="s">&quot;-c:v&quot;</span>, <span class="s">&quot;copy&quot;</span>, <span class="s">&quot;-disposition:v&quot;</span>, <span class="s">&quot;attached_pic&quot;</span>]
+</span><span class="row"><span class="ln">166</span>    no_art = [<span class="s">&quot;-map&quot;</span>, <span class="s">&quot;0:a:0&quot;</span>]
+</span><span class="row"><span class="ln">167</span>    <span class="k">return</span> [base + with_art + audio + tail, base + no_art + audio + tail]
+</span></pre></div></div><div class="sec" id="app-encoder-py-4"><div class="expl"><h3>4. Running the whole plan</h3><p><span class="tag what">What</span> Encode every job on a pool of threads, report progress after each track, and stop cleanly when asked.</p><p><span class="tag why">Why</span> Encoding is the slow part; one ffmpeg per CPU core keeps the machine busy. Each MP3 is written as &quot;name.mp3.part&quot; and renamed when done, so a stopped run never leaves a half-written MP3 behind.</p><p><span class="tag wrong">If it goes wrong</span> failures are collected with their ffmpeg error; running again retries only what is missing.</p></div><div class="code"><pre><span class="row"><span class="ln">180</span>
+</span><span class="row"><span class="ln">181</span>@dataclass
+</span><span class="row"><span class="ln">182</span><span class="k">class</span> RunResult:
+</span><span class="row"><span class="ln">183</span>    done: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">184</span>    converted: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">185</span>    kept_aac: int = <span class="n">0</span>
+</span><span class="row"><span class="ln">186</span>    failures: List[tuple] = field(default_factory=list)    <span class="c"># (source path, error)</span>
+</span><span class="row"><span class="ln">187</span>    cancelled: bool = <span class="k">False</span>
+</span><span class="row"><span class="ln">188</span>
+</span><span class="row"><span class="ln">189</span>
+</span><span class="row"><span class="ln">190</span>ProgressFn = Callable[[int, int, str, str], <span class="k">None</span>]   <span class="c"># (done, total, file name, status)</span>
+</span><span class="row"><span class="ln">191</span>
 </span><span class="row"><span class="ln">192</span>
-</span><span class="row"><span class="ln">193</span>    <span class="k">def</span> stop(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">194</span>        <span class="d">&quot;&quot;&quot;Called from the window&#x27;s Stop button (another thread).&quot;&quot;&quot;</span>
-</span><span class="row"><span class="ln">195</span>        self.cancel.set()
-</span><span class="row"><span class="ln">196</span>        <span class="k">with</span> self.lock:
-</span><span class="row"><span class="ln">197</span>            <span class="k">for</span> p <span class="k">in</span> list(self.procs):
-</span><span class="row"><span class="ln">198</span>                <span class="k">try</span>:
-</span><span class="row"><span class="ln">199</span>                    p.kill()
-</span><span class="row"><span class="ln">200</span>                <span class="k">except</span> OSError:
-</span><span class="row"><span class="ln">201</span>                    <span class="k">pass</span>
-</span><span class="row"><span class="ln">202</span>
-</span><span class="row"><span class="ln">203</span>    <span class="k">def</span> _run_cmd(self, cmd: List[str]) -&gt; tuple:
-</span><span class="row"><span class="ln">204</span>        p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-</span><span class="row"><span class="ln">205</span>                             creationflags=NO_WINDOW)
-</span><span class="row"><span class="ln">206</span>        <span class="k">with</span> self.lock:
-</span><span class="row"><span class="ln">207</span>            self.procs.add(p)
-</span><span class="row"><span class="ln">208</span>        _, err = p.communicate()
-</span><span class="row"><span class="ln">209</span>        <span class="k">with</span> self.lock:
-</span><span class="row"><span class="ln">210</span>            self.procs.discard(p)
-</span><span class="row"><span class="ln">211</span>        <span class="k">return</span> p.returncode, err.decode(<span class="s">&quot;utf-8&quot;</span>, <span class="s">&quot;replace&quot;</span>).strip()
-</span><span class="row"><span class="ln">212</span>
-</span><span class="row"><span class="ln">213</span>    <span class="k">def</span> _one(self, job: Job) -&gt; str:
-</span><span class="row"><span class="ln">214</span>        <span class="k">if</span> self.cancel.is_set():
-</span><span class="row"><span class="ln">215</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
-</span><span class="row"><span class="ln">216</span>        <span class="k">if</span> <span class="k">not</span> os.path.exists(job.track.path):
-</span><span class="row"><span class="ln">217</span>            <span class="k">return</span> <span class="s">&quot;FAIL source file missing&quot;</span>
-</span><span class="row"><span class="ln">218</span>        <span class="k">if</span> job.probe <span class="k">and</span> audio_codec(self.ffmpeg, job.track.path) != <span class="s">&quot;alac&quot;</span>:
-</span><span class="row"><span class="ln">219</span>            <span class="k">return</span> <span class="s">&quot;kept (AAC, already lossy)&quot;</span>
-</span><span class="row"><span class="ln">220</span>        os.makedirs(os.path.dirname(job.dst), exist_ok=<span class="k">True</span>)
-</span><span class="row"><span class="ln">221</span>        tmp = job.dst + <span class="s">&quot;.part&quot;</span>
-</span><span class="row"><span class="ln">222</span>        err = <span class="s">&quot;&quot;</span>
-</span><span class="row"><span class="ln">223</span>        <span class="k">for</span> cmd <span class="k">in</span> ffmpeg_commands(self.ffmpeg, job, self.s, tmp):
-</span><span class="row"><span class="ln">224</span>            code, err = self._run_cmd(cmd)
-</span><span class="row"><span class="ln">225</span>            <span class="k">if</span> self.cancel.is_set():
-</span><span class="row"><span class="ln">226</span>                <span class="k">break</span>
-</span><span class="row"><span class="ln">227</span>            <span class="k">if</span> code == <span class="n">0</span> <span class="k">and</span> os.path.exists(tmp) <span class="k">and</span> os.path.getsize(tmp) &gt; <span class="n">0</span>:
-</span><span class="row"><span class="ln">228</span>                os.replace(tmp, job.dst)
-</span><span class="row"><span class="ln">229</span>                <span class="k">return</span> <span class="s">&quot;ok&quot;</span>
-</span><span class="row"><span class="ln">230</span>        <span class="k">if</span> os.path.exists(tmp):
-</span><span class="row"><span class="ln">231</span>            os.remove(tmp)
-</span><span class="row"><span class="ln">232</span>        <span class="k">if</span> self.cancel.is_set():
-</span><span class="row"><span class="ln">233</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
-</span><span class="row"><span class="ln">234</span>        <span class="k">return</span> <span class="s">&quot;FAIL &quot;</span> + (err.splitlines()[-<span class="n">1</span>] <span class="k">if</span> err <span class="k">else</span> <span class="s">&quot;ffmpeg failed&quot;</span>)
-</span><span class="row"><span class="ln">235</span>
-</span><span class="row"><span class="ln">236</span>    <span class="k">def</span> run(self) -&gt; RunResult:
-</span><span class="row"><span class="ln">237</span>        todo = self.plan.todo(self.s.overwrite)
-</span><span class="row"><span class="ln">238</span>        total = len(todo)
-</span><span class="row"><span class="ln">239</span>
-</span><span class="row"><span class="ln">240</span>        <span class="k">def</span> work(job: Job) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">241</span>            status = self._one(job)
-</span><span class="row"><span class="ln">242</span>            <span class="k">with</span> self.lock:
-</span><span class="row"><span class="ln">243</span>                <span class="k">if</span> status == <span class="s">&quot;cancelled&quot;</span>:
-</span><span class="row"><span class="ln">244</span>                    <span class="k">return</span>
-</span><span class="row"><span class="ln">245</span>                self.result.done += <span class="n">1</span>
-</span><span class="row"><span class="ln">246</span>                <span class="k">if</span> status == <span class="s">&quot;ok&quot;</span>:
-</span><span class="row"><span class="ln">247</span>                    self.result.converted += <span class="n">1</span>
-</span><span class="row"><span class="ln">248</span>                <span class="k">elif</span> status.startswith(<span class="s">&quot;kept&quot;</span>):
-</span><span class="row"><span class="ln">249</span>                    self.result.kept_aac += <span class="n">1</span>
-</span><span class="row"><span class="ln">250</span>                <span class="k">else</span>:
-</span><span class="row"><span class="ln">251</span>                    self.result.failures.append((job.track.path, status[<span class="n">5</span>:]))
-</span><span class="row"><span class="ln">252</span>                done = self.result.done
-</span><span class="row"><span class="ln">253</span>            self.progress(done, total, os.path.basename(job.dst), status)
-</span><span class="row"><span class="ln">254</span>
-</span><span class="row"><span class="ln">255</span>        <span class="k">with</span> cf.ThreadPoolExecutor(max(<span class="n">1</span>, self.s.jobs)) <span class="k">as</span> ex:
-</span><span class="row"><span class="ln">256</span>            list(ex.map(work, todo))
-</span><span class="row"><span class="ln">257</span>        self.result.cancelled = self.cancel.is_set()
-</span><span class="row"><span class="ln">258</span>        <span class="k">return</span> self.result
-</span><span class="row"><span class="ln">259</span>
-</span><span class="row"><span class="ln">260</span>
-</span><span class="row"><span class="ln">261</span><span class="k">def</span> write_failures(path: str, failures: List[tuple]) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">262</span>    <span class="k">with</span> open(path, <span class="s">&quot;w&quot;</span>, encoding=<span class="s">&quot;utf-8&quot;</span>) <span class="k">as</span> f:
-</span><span class="row"><span class="ln">263</span>        <span class="k">for</span> src, err <span class="k">in</span> failures:
-</span><span class="row"><span class="ln">264</span>            f.write(f&quot;{src}\n    {err}\n&quot;)
-</span></pre></div></div><div class="sec" id="app-encoder-py-5"><div class="expl"><h3>5. Calibration tracks</h3><p><span class="tag what">What</span> Make four test tracks (a FLAC reference and three MP3 variants) with a kick exactly on every beat at 120 BPM, first kick at 1.000 s.</p><p><span class="tag why">Why</span> Import them into rekordbox, let it analyze, export the collection, and core.read_calibration compares the grid starts to the millisecond. This is how the 25 ms MP3 delay was measured.</p><p><span class="tag wrong">If it goes wrong</span> if rekordbox can&#x27;t find a grid on a test track, re-analyze it (right-click &gt; Analyze Track).</p></div><div class="code"><pre><span class="row"><span class="ln">277</span>
-</span><span class="row"><span class="ln">278</span>CAL_KICK = (<span class="s">&quot;if(gte(t,1), exp(-mod(t-1,0.5)*40)*sin(2*PI*(45*mod(t-1,0.5)+&quot;</span>
-</span><span class="row"><span class="ln">279</span>            <span class="s">&quot;(110/40)*(1-exp(-40*mod(t-1,0.5))))), 0)*0.9&quot;</span>)
-</span><span class="row"><span class="ln">280</span>CAL_FILES = [  <span class="c"># (file name, title, extra ffmpeg args or None for the FLAC)</span>
-</span><span class="row"><span class="ln">281</span>    (<span class="s">&quot;A - reference.flac&quot;</span>, <span class="s">&quot;CAL A reference FLAC&quot;</span>, <span class="k">None</span>),
-</span><span class="row"><span class="ln">282</span>    (<span class="s">&quot;B - standard.mp3&quot;</span>, <span class="s">&quot;CAL B standard MP3&quot;</span>, []),
-</span><span class="row"><span class="ln">283</span>    (<span class="s">&quot;C - no header.mp3&quot;</span>, <span class="s">&quot;CAL C no LAME header&quot;</span>, [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
-</span><span class="row"><span class="ln">284</span>    (<span class="s">&quot;D - pretrim no header.mp3&quot;</span>, <span class="s">&quot;CAL D pretrim no header&quot;</span>,
-</span><span class="row"><span class="ln">285</span>     [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={ENCODER_DELAY_SAMPLES},asetpts=PTS-STARTPTS&quot;, <span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
-</span><span class="row"><span class="ln">286</span>]
-</span><span class="row"><span class="ln">287</span>
-</span><span class="row"><span class="ln">288</span>
-</span><span class="row"><span class="ln">289</span><span class="k">def</span> make_calibration_tracks(ffmpeg: str, folder: str) -&gt; List[str]:
-</span><span class="row"><span class="ln">290</span>    os.makedirs(folder, exist_ok=<span class="k">True</span>)
-</span><span class="row"><span class="ln">291</span>    ref = os.path.join(folder, CAL_FILES[<span class="n">0</span>][<span class="n">0</span>])
-</span><span class="row"><span class="ln">292</span>    out = []
-</span><span class="row"><span class="ln">293</span>    <span class="k">for</span> name, title, extra <span class="k">in</span> CAL_FILES:
-</span><span class="row"><span class="ln">294</span>        dst = os.path.join(folder, name)
-</span><span class="row"><span class="ln">295</span>        <span class="k">if</span> extra <span class="k">is</span> <span class="k">None</span>:
-</span><span class="row"><span class="ln">296</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-f&quot;</span>, <span class="s">&quot;lavfi&quot;</span>,
-</span><span class="row"><span class="ln">297</span>                   <span class="s">&quot;-i&quot;</span>, f&quot;aevalsrc=&#x27;{CAL_KICK}&#x27;:s=44100:d=64:c=stereo&quot;, <span class="s">&quot;-sample_fmt&quot;</span>, <span class="s">&quot;s16&quot;</span>]
-</span><span class="row"><span class="ln">298</span>        <span class="k">else</span>:
-</span><span class="row"><span class="ln">299</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, ref,
-</span><span class="row"><span class="ln">300</span>                   <span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, <span class="s">&quot;320k&quot;</span>, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
-</span><span class="row"><span class="ln">301</span>                   <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>] + extra
-</span><span class="row"><span class="ln">302</span>        cmd += [<span class="s">&quot;-metadata&quot;</span>, f&quot;title={title}&quot;, <span class="s">&quot;-metadata&quot;</span>, <span class="s">&quot;artist=Calibration&quot;</span>, dst]
-</span><span class="row"><span class="ln">303</span>        r = subprocess.run(cmd, capture_output=<span class="k">True</span>, text=<span class="k">True</span>, creationflags=NO_WINDOW)
-</span><span class="row"><span class="ln">304</span>        <span class="k">if</span> r.returncode != <span class="n">0</span>:
-</span><span class="row"><span class="ln">305</span>            <span class="k">raise</span> RuntimeError(r.stderr.strip() <span class="k">or</span> f&quot;ffmpeg failed on {name}&quot;)
-</span><span class="row"><span class="ln">306</span>        out.append(dst)
-</span><span class="row"><span class="ln">307</span>    <span class="k">return</span> out
+</span><span class="row"><span class="ln">193</span><span class="k">class</span> Runner:
+</span><span class="row"><span class="ln">194</span>    <span class="k">def</span> __init__(self, ffmpeg: str, plan: Plan, s: Settings,
+</span><span class="row"><span class="ln">195</span>                 progress: ProgressFn, cancel: Optional[threading.Event] = <span class="k">None</span>):
+</span><span class="row"><span class="ln">196</span>        self.ffmpeg, self.plan, self.s, self.progress = ffmpeg, plan, s, progress
+</span><span class="row"><span class="ln">197</span>        self.cancel = cancel <span class="k">or</span> threading.Event()
+</span><span class="row"><span class="ln">198</span>        self.lock = threading.Lock()
+</span><span class="row"><span class="ln">199</span>        self.procs: set = set()
+</span><span class="row"><span class="ln">200</span>        self.result = RunResult()
+</span><span class="row"><span class="ln">201</span>
+</span><span class="row"><span class="ln">202</span>    <span class="k">def</span> stop(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">203</span>        <span class="d">&quot;&quot;&quot;Called from the window&#x27;s Stop button (another thread).&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">204</span>        self.cancel.set()
+</span><span class="row"><span class="ln">205</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">206</span>            <span class="k">for</span> p <span class="k">in</span> list(self.procs):
+</span><span class="row"><span class="ln">207</span>                <span class="k">try</span>:
+</span><span class="row"><span class="ln">208</span>                    p.kill()
+</span><span class="row"><span class="ln">209</span>                <span class="k">except</span> OSError:
+</span><span class="row"><span class="ln">210</span>                    <span class="k">pass</span>
+</span><span class="row"><span class="ln">211</span>
+</span><span class="row"><span class="ln">212</span>    <span class="k">def</span> _run_cmd(self, cmd: List[str]) -&gt; tuple:
+</span><span class="row"><span class="ln">213</span>        p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+</span><span class="row"><span class="ln">214</span>                             creationflags=NO_WINDOW)
+</span><span class="row"><span class="ln">215</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">216</span>            self.procs.add(p)
+</span><span class="row"><span class="ln">217</span>        _, err = p.communicate()
+</span><span class="row"><span class="ln">218</span>        <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">219</span>            self.procs.discard(p)
+</span><span class="row"><span class="ln">220</span>        <span class="k">return</span> p.returncode, err.decode(<span class="s">&quot;utf-8&quot;</span>, <span class="s">&quot;replace&quot;</span>).strip()
+</span><span class="row"><span class="ln">221</span>
+</span><span class="row"><span class="ln">222</span>    <span class="k">def</span> _one(self, job: Job) -&gt; str:
+</span><span class="row"><span class="ln">223</span>        <span class="d">&quot;&quot;&quot;Encode one track. Any error becomes a &quot;FAIL ...&quot; status for that
+</span><span class="row"><span class="ln">224</span>        track instead of stopping the whole run.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">225</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">226</span>            <span class="k">return</span> self._encode(job)
+</span><span class="row"><span class="ln">227</span>        <span class="k">except</span> Exception <span class="k">as</span> e:   <span class="c"># noqa: BLE001 - reported per track</span>
+</span><span class="row"><span class="ln">228</span>            <span class="k">return</span> f&quot;FAIL {type(e).__name__}: {e}&quot;
+</span><span class="row"><span class="ln">229</span>
+</span><span class="row"><span class="ln">230</span>    <span class="k">def</span> _encode(self, job: Job) -&gt; str:
+</span><span class="row"><span class="ln">231</span>        <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">232</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
+</span><span class="row"><span class="ln">233</span>        <span class="k">if</span> <span class="k">not</span> os.path.exists(job.track.path):
+</span><span class="row"><span class="ln">234</span>            <span class="k">return</span> <span class="s">&quot;FAIL source file missing&quot;</span>
+</span><span class="row"><span class="ln">235</span>        <span class="k">if</span> job.probe <span class="k">and</span> audio_codec(self.ffmpeg, job.track.path) != <span class="s">&quot;alac&quot;</span>:
+</span><span class="row"><span class="ln">236</span>            <span class="k">return</span> <span class="s">&quot;kept (AAC, already lossy)&quot;</span>
+</span><span class="row"><span class="ln">237</span>        os.makedirs(os.path.dirname(job.dst), exist_ok=<span class="k">True</span>)
+</span><span class="row"><span class="ln">238</span>        tmp = job.dst + <span class="s">&quot;.part&quot;</span>
+</span><span class="row"><span class="ln">239</span>        err = <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">240</span>        <span class="k">for</span> cmd <span class="k">in</span> ffmpeg_commands(self.ffmpeg, job, self.s, tmp):
+</span><span class="row"><span class="ln">241</span>            code, err = self._run_cmd(cmd)
+</span><span class="row"><span class="ln">242</span>            <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">243</span>                <span class="k">break</span>
+</span><span class="row"><span class="ln">244</span>            <span class="k">if</span> code == <span class="n">0</span> <span class="k">and</span> os.path.exists(tmp) <span class="k">and</span> os.path.getsize(tmp) &gt; <span class="n">0</span>:
+</span><span class="row"><span class="ln">245</span>                _retry(os.replace, tmp, job.dst)
+</span><span class="row"><span class="ln">246</span>                <span class="k">return</span> <span class="s">&quot;ok&quot;</span>
+</span><span class="row"><span class="ln">247</span>        <span class="k">if</span> os.path.exists(tmp):
+</span><span class="row"><span class="ln">248</span>            _retry(os.remove, tmp)
+</span><span class="row"><span class="ln">249</span>        <span class="k">if</span> self.cancel.is_set():
+</span><span class="row"><span class="ln">250</span>            <span class="k">return</span> <span class="s">&quot;cancelled&quot;</span>
+</span><span class="row"><span class="ln">251</span>        <span class="k">return</span> <span class="s">&quot;FAIL &quot;</span> + (err.splitlines()[-<span class="n">1</span>] <span class="k">if</span> err <span class="k">else</span> <span class="s">&quot;ffmpeg failed&quot;</span>)
+</span><span class="row"><span class="ln">252</span>
+</span><span class="row"><span class="ln">253</span>    <span class="k">def</span> run(self) -&gt; RunResult:
+</span><span class="row"><span class="ln">254</span>        todo = self.plan.todo(self.s.overwrite)
+</span><span class="row"><span class="ln">255</span>        total = len(todo)
+</span><span class="row"><span class="ln">256</span>
+</span><span class="row"><span class="ln">257</span>        <span class="k">def</span> work(job: Job) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">258</span>            status = self._one(job)
+</span><span class="row"><span class="ln">259</span>            <span class="k">with</span> self.lock:
+</span><span class="row"><span class="ln">260</span>                <span class="k">if</span> status == <span class="s">&quot;cancelled&quot;</span>:
+</span><span class="row"><span class="ln">261</span>                    <span class="k">return</span>
+</span><span class="row"><span class="ln">262</span>                self.result.done += <span class="n">1</span>
+</span><span class="row"><span class="ln">263</span>                <span class="k">if</span> status == <span class="s">&quot;ok&quot;</span>:
+</span><span class="row"><span class="ln">264</span>                    self.result.converted += <span class="n">1</span>
+</span><span class="row"><span class="ln">265</span>                <span class="k">elif</span> status.startswith(<span class="s">&quot;kept&quot;</span>):
+</span><span class="row"><span class="ln">266</span>                    self.result.kept_aac += <span class="n">1</span>
+</span><span class="row"><span class="ln">267</span>                <span class="k">else</span>:
+</span><span class="row"><span class="ln">268</span>                    self.result.failures.append((job.track.path, status[<span class="n">5</span>:]))
+</span><span class="row"><span class="ln">269</span>                done = self.result.done
+</span><span class="row"><span class="ln">270</span>            self.progress(done, total, os.path.basename(job.dst), status)
+</span><span class="row"><span class="ln">271</span>
+</span><span class="row"><span class="ln">272</span>        <span class="k">with</span> cf.ThreadPoolExecutor(max(<span class="n">1</span>, self.s.jobs)) <span class="k">as</span> ex:
+</span><span class="row"><span class="ln">273</span>            list(ex.map(work, todo))
+</span><span class="row"><span class="ln">274</span>        self.result.cancelled = self.cancel.is_set()
+</span><span class="row"><span class="ln">275</span>        <span class="k">return</span> self.result
+</span><span class="row"><span class="ln">276</span>
+</span><span class="row"><span class="ln">277</span>
+</span><span class="row"><span class="ln">278</span><span class="k">def</span> _retry(fn, *args, tries: int = <span class="n">20</span>, wait: float = <span class="n">0.25</span>):
+</span><span class="row"><span class="ln">279</span>    <span class="d">&quot;&quot;&quot;Windows can briefly lock a file that was just written (antivirus
+</span><span class="row"><span class="ln">280</span>    scanning, the search indexer). Retry a rename or delete for ~5 seconds,
+</span><span class="row"><span class="ln">281</span>    like a C++ loop around MoveFileEx that sleeps on ERROR_SHARING_VIOLATION.&quot;&quot;&quot;</span>
+</span><span class="row"><span class="ln">282</span>    <span class="k">for</span> i <span class="k">in</span> range(tries):
+</span><span class="row"><span class="ln">283</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">284</span>            <span class="k">return</span> fn(*args)
+</span><span class="row"><span class="ln">285</span>        <span class="k">except</span> PermissionError:
+</span><span class="row"><span class="ln">286</span>            <span class="k">if</span> i == tries - <span class="n">1</span>:
+</span><span class="row"><span class="ln">287</span>                <span class="k">raise</span>
+</span><span class="row"><span class="ln">288</span>            time.sleep(wait)
+</span><span class="row"><span class="ln">289</span>
+</span><span class="row"><span class="ln">290</span>
+</span><span class="row"><span class="ln">291</span><span class="k">def</span> write_failures(path: str, failures: List[tuple]) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">292</span>    <span class="k">with</span> open(path, <span class="s">&quot;w&quot;</span>, encoding=<span class="s">&quot;utf-8&quot;</span>) <span class="k">as</span> f:
+</span><span class="row"><span class="ln">293</span>        <span class="k">for</span> src, err <span class="k">in</span> failures:
+</span><span class="row"><span class="ln">294</span>            f.write(f&quot;{src}\n    {err}\n&quot;)
+</span></pre></div></div><div class="sec" id="app-encoder-py-5"><div class="expl"><h3>5. Calibration tracks</h3><p><span class="tag what">What</span> Make four test tracks (a FLAC reference and three MP3 variants) with a kick exactly on every beat at 120 BPM, first kick at 1.000 s.</p><p><span class="tag why">Why</span> Import them into rekordbox, let it analyze, export the collection, and core.read_calibration compares the grid starts to the millisecond. This is how the 25 ms MP3 delay was measured.</p><p><span class="tag wrong">If it goes wrong</span> if rekordbox can&#x27;t find a grid on a test track, re-analyze it (right-click &gt; Analyze Track).</p></div><div class="code"><pre><span class="row"><span class="ln">307</span>
+</span><span class="row"><span class="ln">308</span>CAL_KICK = (<span class="s">&quot;if(gte(t,1), exp(-mod(t-1,0.5)*40)*sin(2*PI*(45*mod(t-1,0.5)+&quot;</span>
+</span><span class="row"><span class="ln">309</span>            <span class="s">&quot;(110/40)*(1-exp(-40*mod(t-1,0.5))))), 0)*0.9&quot;</span>)
+</span><span class="row"><span class="ln">310</span>CAL_FILES = [  <span class="c"># (file name, title, extra ffmpeg args or None for the FLAC)</span>
+</span><span class="row"><span class="ln">311</span>    (<span class="s">&quot;A - reference.flac&quot;</span>, <span class="s">&quot;CAL A reference FLAC&quot;</span>, <span class="k">None</span>),
+</span><span class="row"><span class="ln">312</span>    (<span class="s">&quot;B - standard.mp3&quot;</span>, <span class="s">&quot;CAL B standard MP3&quot;</span>, []),
+</span><span class="row"><span class="ln">313</span>    (<span class="s">&quot;C - no header.mp3&quot;</span>, <span class="s">&quot;CAL C no LAME header&quot;</span>, [<span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
+</span><span class="row"><span class="ln">314</span>    (<span class="s">&quot;D - pretrim no header.mp3&quot;</span>, <span class="s">&quot;CAL D pretrim no header&quot;</span>,
+</span><span class="row"><span class="ln">315</span>     [<span class="s">&quot;-af&quot;</span>, f&quot;atrim=start_sample={ENCODER_DELAY_SAMPLES},asetpts=PTS-STARTPTS&quot;, <span class="s">&quot;-write_xing&quot;</span>, <span class="s">&quot;0&quot;</span>]),
+</span><span class="row"><span class="ln">316</span>]
+</span><span class="row"><span class="ln">317</span>
+</span><span class="row"><span class="ln">318</span>
+</span><span class="row"><span class="ln">319</span><span class="k">def</span> make_calibration_tracks(ffmpeg: str, folder: str) -&gt; List[str]:
+</span><span class="row"><span class="ln">320</span>    os.makedirs(folder, exist_ok=<span class="k">True</span>)
+</span><span class="row"><span class="ln">321</span>    ref = os.path.join(folder, CAL_FILES[<span class="n">0</span>][<span class="n">0</span>])
+</span><span class="row"><span class="ln">322</span>    out = []
+</span><span class="row"><span class="ln">323</span>    <span class="k">for</span> name, title, extra <span class="k">in</span> CAL_FILES:
+</span><span class="row"><span class="ln">324</span>        dst = os.path.join(folder, name)
+</span><span class="row"><span class="ln">325</span>        <span class="k">if</span> extra <span class="k">is</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">326</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-f&quot;</span>, <span class="s">&quot;lavfi&quot;</span>,
+</span><span class="row"><span class="ln">327</span>                   <span class="s">&quot;-i&quot;</span>, f&quot;aevalsrc=&#x27;{CAL_KICK}&#x27;:s=44100:d=64:c=stereo&quot;, <span class="s">&quot;-sample_fmt&quot;</span>, <span class="s">&quot;s16&quot;</span>]
+</span><span class="row"><span class="ln">328</span>        <span class="k">else</span>:
+</span><span class="row"><span class="ln">329</span>            cmd = [ffmpeg, <span class="s">&quot;-hide_banner&quot;</span>, <span class="s">&quot;-loglevel&quot;</span>, <span class="s">&quot;error&quot;</span>, <span class="s">&quot;-y&quot;</span>, <span class="s">&quot;-i&quot;</span>, ref,
+</span><span class="row"><span class="ln">330</span>                   <span class="s">&quot;-c:a&quot;</span>, <span class="s">&quot;libmp3lame&quot;</span>, <span class="s">&quot;-b:a&quot;</span>, <span class="s">&quot;320k&quot;</span>, <span class="s">&quot;-compression_level&quot;</span>, <span class="s">&quot;0&quot;</span>,
+</span><span class="row"><span class="ln">331</span>                   <span class="s">&quot;-id3v2_version&quot;</span>, <span class="s">&quot;3&quot;</span>] + extra
+</span><span class="row"><span class="ln">332</span>        cmd += [<span class="s">&quot;-metadata&quot;</span>, f&quot;title={title}&quot;, <span class="s">&quot;-metadata&quot;</span>, <span class="s">&quot;artist=Calibration&quot;</span>, dst]
+</span><span class="row"><span class="ln">333</span>        r = subprocess.run(cmd, capture_output=<span class="k">True</span>, text=<span class="k">True</span>, creationflags=NO_WINDOW)
+</span><span class="row"><span class="ln">334</span>        <span class="k">if</span> r.returncode != <span class="n">0</span>:
+</span><span class="row"><span class="ln">335</span>            <span class="k">raise</span> RuntimeError(r.stderr.strip() <span class="k">or</span> f&quot;ffmpeg failed on {name}&quot;)
+</span><span class="row"><span class="ln">336</span>        out.append(dst)
+</span><span class="row"><span class="ln">337</span>    <span class="k">return</span> out
 </span></pre></div></div></section><section class="file" id="app-gui-py"><h2>app/gui.py</h2><p class="dim">The window</p><div class="intro"><pre class="doc">gui.py - the window (Qt, through PySide6).
 
 PySide6 is the official Python binding of Qt. Every class here (QMainWindow,
@@ -705,7 +734,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">86</span>            <span class="k">if</span> <span class="k">not</span> out[<span class="s">&quot;result&quot;</span>].cancelled:
 </span><span class="row"><span class="ln">87</span>                self.bridge.message.emit(<span class="s">&quot;Writing the XML…&quot;</span>)
 </span><span class="row"><span class="ln">88</span>                n, p = core.write_xml(self.lib, self.plan, self.s,
-</span><span class="row"><span class="ln">89</span>                                      <span class="k">lambda</span> f: encoder.audio_codec(self.ffmpeg, f) == <span class="s">&quot;alac&quot;</span>)
+</span><span class="row"><span class="ln">89</span>                                      <span class="k">lambda</span> f: encoder.is_alac(self.ffmpeg, f))
 </span><span class="row"><span class="ln">90</span>                out[<span class="s">&quot;tracks&quot;</span>], out[<span class="s">&quot;playlists&quot;</span>] = n, p
 </span><span class="row"><span class="ln">91</span>                <span class="k">if</span> out[<span class="s">&quot;result&quot;</span>].failures:
 </span><span class="row"><span class="ln">92</span>                    log = os.path.splitext(self.plan.out_xml)[<span class="n">0</span>] + <span class="s">&quot;_failures.txt&quot;</span>
@@ -923,7 +952,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">342</span>        <span class="k">try</span>:
 </span><span class="row"><span class="ln">343</span>            self.lib = core.load_library(path)
 </span><span class="row"><span class="ln">344</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
-</span><span class="row"><span class="ln">345</span>            QMessageBox.warning(self, APP_NAME, f&quot;Could not read that XML:\n{e}&quot;)
+</span><span class="row"><span class="ln">345</span>            self.notify(APP_NAME, f&quot;Could not read that XML:\n{e}&quot;)
 </span><span class="row"><span class="ln">346</span>            <span class="k">return</span>
 </span><span class="row"><span class="ln">347</span>        self.xml_edit.setText(path)
 </span><span class="row"><span class="ln">348</span>        self.fill_tree()
@@ -1024,7 +1053,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">452</span>            <span class="k">if</span> <span class="k">not</span> self.lib:
 </span><span class="row"><span class="ln">453</span>                <span class="k">return</span>
 </span><span class="row"><span class="ln">454</span>        <span class="k">if</span> <span class="k">not</span> self.ffmpeg:
-</span><span class="row"><span class="ln">455</span>            QMessageBox.warning(self, APP_NAME, <span class="s">&quot;No usable ffmpeg was found. Use Tools &gt; Choose ffmpeg.&quot;</span>)
+</span><span class="row"><span class="ln">455</span>            self.notify(APP_NAME, <span class="s">&quot;No usable ffmpeg was found. Use Tools &gt; Choose ffmpeg.&quot;</span>)
 </span><span class="row"><span class="ln">456</span>            <span class="k">return</span>
 </span><span class="row"><span class="ln">457</span>        s = self.settings()
 </span><span class="row"><span class="ln">458</span>        plan = self.current_plan()
@@ -1032,7 +1061,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">460</span>            <span class="k">return</span>
 </span><span class="row"><span class="ln">461</span>        todo = <span class="n">0</span> <span class="k">if</span> s.xml_only <span class="k">else</span> len(plan.todo(s.overwrite))
 </span><span class="row"><span class="ln">462</span>        <span class="k">if</span> s.overwrite <span class="k">and</span> todo &gt; <span class="n">50</span>:
-</span><span class="row"><span class="ln">463</span>            <span class="k">if</span> QMessageBox.question(self, APP_NAME, f&quot;Re-encode {todo} tracks, including ones &quot;
+</span><span class="row"><span class="ln">463</span>            <span class="k">if</span> self.ask(APP_NAME, f&quot;Re-encode {todo} tracks, including ones &quot;
 </span><span class="row"><span class="ln">464</span>                                    <span class="s">&quot;already converted?&quot;</span>) != QMessageBox.Yes:
 </span><span class="row"><span class="ln">465</span>                <span class="k">return</span>
 </span><span class="row"><span class="ln">466</span>        self._save()
@@ -1063,7 +1092,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">491</span>        r: encoder.RunResult = out[<span class="s">&quot;result&quot;</span>]
 </span><span class="row"><span class="ln">492</span>        <span class="k">if</span> out[<span class="s">&quot;error&quot;</span>]:
 </span><span class="row"><span class="ln">493</span>            self.log(<span class="s">&quot;ERROR: &quot;</span> + out[<span class="s">&quot;error&quot;</span>])
-</span><span class="row"><span class="ln">494</span>            QMessageBox.critical(self, APP_NAME, out[<span class="s">&quot;error&quot;</span>])
+</span><span class="row"><span class="ln">494</span>            self.notify(APP_NAME, out[<span class="s">&quot;error&quot;</span>])
 </span><span class="row"><span class="ln">495</span>        <span class="k">elif</span> r.cancelled:
 </span><span class="row"><span class="ln">496</span>            self.log(<span class="s">&quot;Stopped. Press Start to continue where it left off.&quot;</span>)
 </span><span class="row"><span class="ln">497</span>        <span class="k">else</span>:
@@ -1073,130 +1102,144 @@ C++ reading notes
 </span><span class="row"><span class="ln">501</span>            self.log(msg)
 </span><span class="row"><span class="ln">502</span>            <span class="k">if</span> r.failures:
 </span><span class="row"><span class="ln">503</span>                self.log(f&quot;Failed tracks are listed in {out.get(<span class="s">&#x27;failures_file&#x27;</span>)}&quot;)
-</span><span class="row"><span class="ln">504</span>            box = QMessageBox(QMessageBox.Information, APP_NAME, msg, parent=self)
-</span><span class="row"><span class="ln">505</span>            box.setInformativeText(<span class="s">&quot;Next: import the XML into rekordbox (Help &gt; How to import).&quot;</span>)
-</span><span class="row"><span class="ln">506</span>            box.exec()
-</span><span class="row"><span class="ln">507</span>        self.update_summary()
-</span></pre></div></div><div class="sec" id="app-gui-py-7"><div class="expl"><h3>7. Tools: calibration and ffmpeg</h3><p><span class="tag what">What</span> Make the four calibration tracks, read the results back, and let the user pick a different ffmpeg.</p><p><span class="tag why">Why</span> Lets any DJ verify the cue timing on their own rekordbox version, the same test that found rekordbox ignores the MP3 header.</p><p><span class="tag wrong">If it goes wrong</span> see encoder.py section 5.</p></div><div class="code"><pre><span class="row"><span class="ln">517</span>
-</span><span class="row"><span class="ln">518</span>    <span class="k">def</span> make_calibration(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">519</span>        <span class="k">if</span> <span class="k">not</span> self.ffmpeg:
-</span><span class="row"><span class="ln">520</span>            <span class="k">return</span> self.choose_ffmpeg()
-</span><span class="row"><span class="ln">521</span>        folder = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Folder for the calibration tracks&quot;</span>)
-</span><span class="row"><span class="ln">522</span>        <span class="k">if</span> <span class="k">not</span> folder:
-</span><span class="row"><span class="ln">523</span>            <span class="k">return</span>
-</span><span class="row"><span class="ln">524</span>        <span class="k">try</span>:
-</span><span class="row"><span class="ln">525</span>            encoder.make_calibration_tracks(self.ffmpeg, os.path.join(folder, <span class="s">&quot;calibration&quot;</span>))
-</span><span class="row"><span class="ln">526</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
-</span><span class="row"><span class="ln">527</span>            QMessageBox.warning(self, APP_NAME, str(e))
-</span><span class="row"><span class="ln">528</span>            <span class="k">return</span>
-</span><span class="row"><span class="ln">529</span>        QMessageBox.information(self, APP_NAME, (
-</span><span class="row"><span class="ln">530</span>            <span class="s">&quot;Made 4 calibration tracks in:\n&quot;</span> + os.path.join(folder, <span class="s">&quot;calibration&quot;</span>) + <span class="s">&quot;\n\n&quot;</span>
-</span><span class="row"><span class="ln">531</span>            <span class="s">&quot;1. Drag them into rekordbox and let it analyze them.\n&quot;</span>
-</span><span class="row"><span class="ln">532</span>            <span class="s">&quot;2. File &gt; Export Collection in xml format.\n&quot;</span>
-</span><span class="row"><span class="ln">533</span>            <span class="s">&quot;3. Tools &gt; Check calibration results, and pick that XML.&quot;</span>))
-</span><span class="row"><span class="ln">534</span>
-</span><span class="row"><span class="ln">535</span>    <span class="k">def</span> check_calibration(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">536</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Exported collection XML&quot;</span>, <span class="s">&quot;&quot;</span>, <span class="s">&quot;XML (*.xml)&quot;</span>)
-</span><span class="row"><span class="ln">537</span>        <span class="k">if</span> <span class="k">not</span> path:
-</span><span class="row"><span class="ln">538</span>            <span class="k">return</span>
-</span><span class="row"><span class="ln">539</span>        <span class="k">try</span>:
-</span><span class="row"><span class="ln">540</span>            rows = core.read_calibration(path)
-</span><span class="row"><span class="ln">541</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
-</span><span class="row"><span class="ln">542</span>            QMessageBox.warning(self, APP_NAME, str(e))
-</span><span class="row"><span class="ln">543</span>            <span class="k">return</span>
-</span><span class="row"><span class="ln">544</span>        <span class="k">if</span> <span class="k">not</span> rows:
-</span><span class="row"><span class="ln">545</span>            QMessageBox.information(self, APP_NAME, <span class="s">&quot;No calibration tracks found in that XML.&quot;</span>)
-</span><span class="row"><span class="ln">546</span>            <span class="k">return</span>
-</span><span class="row"><span class="ln">547</span>        lines = [f&quot;{t}: grid {g <span class="k">if</span> g <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&#x27;not analyzed&#x27;</span>}&quot;
-</span><span class="row"><span class="ln">548</span>                 + (f&quot;, {sh:+.1f} ms vs FLAC&quot; <span class="k">if</span> sh <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>) <span class="k">for</span> t, g, sh <span class="k">in</span> rows]
-</span><span class="row"><span class="ln">549</span>        shift = {t[:<span class="n">5</span>]: sh <span class="k">for</span> t, _, sh <span class="k">in</span> rows}
-</span><span class="row"><span class="ln">550</span>        verdict = <span class="s">&quot;&quot;</span>
-</span><span class="row"><span class="ln">551</span>        <span class="k">if</span> shift.get(<span class="s">&quot;CAL C&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> shift.get(<span class="s">&quot;CAL D&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
-</span><span class="row"><span class="ln">552</span>            <span class="k">if</span> abs(shift[<span class="s">&quot;CAL D&quot;</span>]) &lt;= <span class="n">2</span> <span class="k">and</span> abs(shift[<span class="s">&quot;CAL C&quot;</span>] - <span class="n">25</span>) &lt;= <span class="n">3</span>:
-</span><span class="row"><span class="ln">553</span>                verdict = <span class="s">&quot;\n\nResult: Compensate and Align are both exact on this rekordbox.&quot;</span>
-</span><span class="row"><span class="ln">554</span>            <span class="k">else</span>:
-</span><span class="row"><span class="ln">555</span>                verdict = (f&quot;\n\nResult: this rekordbox differs from the tested one. &quot;
-</span><span class="row"><span class="ln">556</span>                           f&quot;Try Fixed offset {shift[<span class="s">&#x27;CAL C&#x27;</span>]:.0f} ms, and please report it.&quot;)
-</span><span class="row"><span class="ln">557</span>        QMessageBox.information(self, APP_NAME, <span class="s">&quot;\n&quot;</span>.join(lines) + verdict)
-</span><span class="row"><span class="ln">558</span>
-</span><span class="row"><span class="ln">559</span>    <span class="k">def</span> find_ffmpeg(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">560</span>        self.ffmpeg, msg = encoder.find_ffmpeg(self.cfg.value(<span class="s">&quot;ffmpeg&quot;</span>) <span class="k">or</span> <span class="k">None</span>)
-</span><span class="row"><span class="ln">561</span>        self.statusBar().showMessage(msg <span class="k">if</span> self.ffmpeg <span class="k">else</span> <span class="s">&quot;⚠ &quot;</span> + msg.splitlines()[<span class="n">0</span>])
-</span><span class="row"><span class="ln">562</span>        self.log(msg)
-</span><span class="row"><span class="ln">563</span>
-</span><span class="row"><span class="ln">564</span>    <span class="k">def</span> choose_ffmpeg(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">565</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Choose ffmpeg&quot;</span>, <span class="s">&quot;&quot;</span>,
-</span><span class="row"><span class="ln">566</span>                                              <span class="s">&quot;ffmpeg (ffmpeg.exe ffmpeg);;All files (*)&quot;</span>)
-</span><span class="row"><span class="ln">567</span>        <span class="k">if</span> path:
-</span><span class="row"><span class="ln">568</span>            <span class="k">if</span> encoder.has_mp3_encoder(path):
-</span><span class="row"><span class="ln">569</span>                self.cfg.setValue(<span class="s">&quot;ffmpeg&quot;</span>, path)
-</span><span class="row"><span class="ln">570</span>                self.find_ffmpeg()
-</span><span class="row"><span class="ln">571</span>            <span class="k">else</span>:
-</span><span class="row"><span class="ln">572</span>                QMessageBox.warning(self, APP_NAME, <span class="s">&quot;That ffmpeg has no MP3 encoder (libmp3lame).&quot;</span>)
-</span></pre></div></div><div class="sec" id="app-gui-py-8"><div class="expl"><h3>8. Small helpers: folders, log, help, saved settings</h3><p><span class="tag what">What</span> Folder pickers, the log, Help dialogs, and remembering options between runs (QSettings: the registry on Windows).</p><p><span class="tag why">Why</span> Convenience; nothing here affects the conversion itself.</p></div><div class="code"><pre><span class="row"><span class="ln">580</span>
-</span><span class="row"><span class="ln">581</span>    <span class="k">def</span> pick_folder(self, edit: QLineEdit) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">582</span>        d = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Choose folder&quot;</span>, edit.text() <span class="k">or</span> <span class="s">&quot;&quot;</span>)
-</span><span class="row"><span class="ln">583</span>        <span class="k">if</span> d:
-</span><span class="row"><span class="ln">584</span>            edit.setText(d.replace(<span class="s">&quot;\\&quot;</span>, <span class="s">&quot;/&quot;</span>))
-</span><span class="row"><span class="ln">585</span>            self.update_summary()
-</span><span class="row"><span class="ln">586</span>
-</span><span class="row"><span class="ln">587</span>    <span class="k">def</span> open_dst(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">588</span>        plan = self.current_plan()
-</span><span class="row"><span class="ln">589</span>        <span class="k">if</span> plan <span class="k">and</span> os.path.isdir(plan.dst_root):
-</span><span class="row"><span class="ln">590</span>            QDesktopServices.openUrl(QUrl.fromLocalFile(plan.dst_root))
-</span><span class="row"><span class="ln">591</span>
-</span><span class="row"><span class="ln">592</span>    <span class="k">def</span> log(self, text: str) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">593</span>        self.log_view.appendPlainText(text)
-</span><span class="row"><span class="ln">594</span>
-</span><span class="row"><span class="ln">595</span>    <span class="k">def</span> show_import_steps(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">596</span>        QMessageBox.information(self, <span class="s">&quot;Import into rekordbox&quot;</span>, IMPORT_STEPS)
-</span><span class="row"><span class="ln">597</span>
-</span><span class="row"><span class="ln">598</span>    <span class="k">def</span> show_about(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">599</span>        QMessageBox.about(self, f&quot;About {APP_NAME}&quot;, (
-</span><span class="row"><span class="ln">600</span>            f&quot;&lt;b&gt;{APP_NAME} {VERSION}&lt;/b&gt;&lt;br&gt;Makes an MP3 copy of a rekordbox library &quot;
-</span><span class="row"><span class="ln">601</span>            <span class="s">&quot;with cues, grids, ratings and playlists.&lt;br&gt;&lt;br&gt;&quot;</span>
-</span><span class="row"><span class="ln">602</span>            <span class="s">&quot;License: GNU GPL v3.0 or later (see LICENSE).&lt;br&gt;&quot;</span>
-</span><span class="row"><span class="ln">603</span>            <span class="s">&quot;Uses FFmpeg (LGPL build) and Qt for Python (LGPL). Their licenses are in &quot;</span>
-</span><span class="row"><span class="ln">604</span>            <span class="s">&quot;the LICENSES folder.&lt;br&gt;&quot;</span>
-</span><span class="row"><span class="ln">605</span>            <span class="s">&quot;rekordbox is a trademark of AlphaTheta Corporation. This app is not &quot;</span>
-</span><span class="row"><span class="ln">606</span>            <span class="s">&quot;affiliated with AlphaTheta.&quot;</span>))
-</span><span class="row"><span class="ln">607</span>
-</span><span class="row"><span class="ln">608</span>    <span class="k">def</span> _restore(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">609</span>        self.set_mode(self.cfg.value(<span class="s">&quot;mode&quot;</span>, <span class="s">&quot;compensate&quot;</span>))
-</span><span class="row"><span class="ln">610</span>        self.set_bitrate(self.cfg.value(<span class="s">&quot;bitrate&quot;</span>, <span class="s">&quot;320k&quot;</span>))
-</span><span class="row"><span class="ln">611</span>        self.jobs_spin.setValue(int(self.cfg.value(<span class="s">&quot;jobs&quot;</span>, core.Settings.jobs)))
-</span><span class="row"><span class="ln">612</span>        self.offset_spin.setValue(float(self.cfg.value(<span class="s">&quot;offset_ms&quot;</span>, <span class="n">0.0</span>)))
-</span><span class="row"><span class="ln">613</span>        self.src_edit.setText(self.cfg.value(<span class="s">&quot;src&quot;</span>, <span class="s">&quot;&quot;</span>))
-</span><span class="row"><span class="ln">614</span>        self.dst_edit.setText(self.cfg.value(<span class="s">&quot;dst&quot;</span>, <span class="s">&quot;&quot;</span>))
-</span><span class="row"><span class="ln">615</span>        last = self.cfg.value(<span class="s">&quot;xml&quot;</span>, <span class="s">&quot;&quot;</span>)
-</span><span class="row"><span class="ln">616</span>        <span class="k">if</span> last <span class="k">and</span> os.path.exists(last):
-</span><span class="row"><span class="ln">617</span>            self.open_xml(last)
-</span><span class="row"><span class="ln">618</span>
-</span><span class="row"><span class="ln">619</span>    <span class="k">def</span> _save(self) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">620</span>        <span class="k">for</span> k, v <span class="k">in</span> [(<span class="s">&quot;mode&quot;</span>, self.mode()), (<span class="s">&quot;bitrate&quot;</span>, self.bitrate_combo.currentText()),
-</span><span class="row"><span class="ln">621</span>                     (<span class="s">&quot;jobs&quot;</span>, self.jobs_spin.value()), (<span class="s">&quot;offset_ms&quot;</span>, self.offset_spin.value()),
-</span><span class="row"><span class="ln">622</span>                     (<span class="s">&quot;src&quot;</span>, self.src_edit.text()), (<span class="s">&quot;dst&quot;</span>, self.dst_edit.text()),
-</span><span class="row"><span class="ln">623</span>                     (<span class="s">&quot;xml&quot;</span>, self.xml_edit.text())]:
-</span><span class="row"><span class="ln">624</span>            self.cfg.setValue(k, v)
-</span><span class="row"><span class="ln">625</span>
-</span><span class="row"><span class="ln">626</span>    <span class="k">def</span> closeEvent(self, ev) -&gt; <span class="k">None</span>:
-</span><span class="row"><span class="ln">627</span>        <span class="k">if</span> self.worker <span class="k">and</span> self.worker.is_alive():
-</span><span class="row"><span class="ln">628</span>            <span class="k">if</span> QMessageBox.question(self, APP_NAME, <span class="s">&quot;A conversion is running. Stop it and quit?&quot;</span>) \
-</span><span class="row"><span class="ln">629</span>                    != QMessageBox.Yes:
-</span><span class="row"><span class="ln">630</span>                ev.ignore()
-</span><span class="row"><span class="ln">631</span>                <span class="k">return</span>
-</span><span class="row"><span class="ln">632</span>            self.worker.stop()
-</span><span class="row"><span class="ln">633</span>            self.worker.join(timeout=<span class="n">10</span>)
-</span><span class="row"><span class="ln">634</span>        self._save()
-</span><span class="row"><span class="ln">635</span>        ev.accept()
-</span><span class="row"><span class="ln">636</span>
-</span><span class="row"><span class="ln">637</span>
-</span><span class="row"><span class="ln">638</span><span class="k">def</span> main(argv: Optional[List[str]] = <span class="k">None</span>) -&gt; int:
-</span><span class="row"><span class="ln">639</span>    app = QApplication(argv <span class="k">if</span> argv <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> sys.argv)
-</span><span class="row"><span class="ln">640</span>    app.setApplicationName(APP_NAME)
-</span><span class="row"><span class="ln">641</span>    w = MainWindow()
-</span><span class="row"><span class="ln">642</span>    w.show()
-</span><span class="row"><span class="ln">643</span>    <span class="k">return</span> app.exec()
+</span><span class="row"><span class="ln">504</span>            self.notify(APP_NAME, msg + <span class="s">&quot;\n\nNext: import the XML into rekordbox &quot;</span>
+</span><span class="row"><span class="ln">505</span>                        <span class="s">&quot;(Help &gt; How to import).&quot;</span>)
+</span><span class="row"><span class="ln">506</span>        self.update_summary()
+</span></pre></div></div><div class="sec" id="app-gui-py-7"><div class="expl"><h3>7. Tools: calibration and ffmpeg</h3><p><span class="tag what">What</span> Make the four calibration tracks, read the results back, and let the user pick a different ffmpeg.</p><p><span class="tag why">Why</span> Lets any DJ verify the cue timing on their own rekordbox version, the same test that found rekordbox ignores the MP3 header.</p><p><span class="tag wrong">If it goes wrong</span> see encoder.py section 5.</p></div><div class="code"><pre><span class="row"><span class="ln">516</span>
+</span><span class="row"><span class="ln">517</span>    <span class="k">def</span> make_calibration(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">518</span>        <span class="k">if</span> <span class="k">not</span> self.ffmpeg:
+</span><span class="row"><span class="ln">519</span>            <span class="k">return</span> self.choose_ffmpeg()
+</span><span class="row"><span class="ln">520</span>        folder = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Folder for the calibration tracks&quot;</span>)
+</span><span class="row"><span class="ln">521</span>        <span class="k">if</span> <span class="k">not</span> folder:
+</span><span class="row"><span class="ln">522</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">523</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">524</span>            encoder.make_calibration_tracks(self.ffmpeg, os.path.join(folder, <span class="s">&quot;calibration&quot;</span>))
+</span><span class="row"><span class="ln">525</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
+</span><span class="row"><span class="ln">526</span>            self.notify(APP_NAME, str(e))
+</span><span class="row"><span class="ln">527</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">528</span>        self.notify(APP_NAME, (
+</span><span class="row"><span class="ln">529</span>            <span class="s">&quot;Made 4 calibration tracks in:\n&quot;</span> + os.path.join(folder, <span class="s">&quot;calibration&quot;</span>) + <span class="s">&quot;\n\n&quot;</span>
+</span><span class="row"><span class="ln">530</span>            <span class="s">&quot;1. Drag them into rekordbox and let it analyze them.\n&quot;</span>
+</span><span class="row"><span class="ln">531</span>            <span class="s">&quot;2. File &gt; Export Collection in xml format.\n&quot;</span>
+</span><span class="row"><span class="ln">532</span>            <span class="s">&quot;3. Tools &gt; Check calibration results, and pick that XML.&quot;</span>))
+</span><span class="row"><span class="ln">533</span>
+</span><span class="row"><span class="ln">534</span>    <span class="k">def</span> check_calibration(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">535</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Exported collection XML&quot;</span>, <span class="s">&quot;&quot;</span>, <span class="s">&quot;XML (*.xml)&quot;</span>)
+</span><span class="row"><span class="ln">536</span>        <span class="k">if</span> <span class="k">not</span> path:
+</span><span class="row"><span class="ln">537</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">538</span>        <span class="k">try</span>:
+</span><span class="row"><span class="ln">539</span>            rows = core.read_calibration(path)
+</span><span class="row"><span class="ln">540</span>        <span class="k">except</span> Exception <span class="k">as</span> e:
+</span><span class="row"><span class="ln">541</span>            self.notify(APP_NAME, str(e))
+</span><span class="row"><span class="ln">542</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">543</span>        <span class="k">if</span> <span class="k">not</span> rows:
+</span><span class="row"><span class="ln">544</span>            self.notify(APP_NAME, <span class="s">&quot;No calibration tracks found in that XML.&quot;</span>)
+</span><span class="row"><span class="ln">545</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">546</span>        lines = [f&quot;{t}: grid {g <span class="k">if</span> g <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&#x27;not analyzed&#x27;</span>}&quot;
+</span><span class="row"><span class="ln">547</span>                 + (f&quot;, {sh:+.1f} ms vs FLAC&quot; <span class="k">if</span> sh <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>) <span class="k">for</span> t, g, sh <span class="k">in</span> rows]
+</span><span class="row"><span class="ln">548</span>        shift = {t[:<span class="n">5</span>]: sh <span class="k">for</span> t, _, sh <span class="k">in</span> rows}
+</span><span class="row"><span class="ln">549</span>        verdict = <span class="s">&quot;&quot;</span>
+</span><span class="row"><span class="ln">550</span>        <span class="k">if</span> shift.get(<span class="s">&quot;CAL C&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> shift.get(<span class="s">&quot;CAL D&quot;</span>) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
+</span><span class="row"><span class="ln">551</span>            <span class="k">if</span> abs(shift[<span class="s">&quot;CAL D&quot;</span>]) &lt;= <span class="n">2</span> <span class="k">and</span> abs(shift[<span class="s">&quot;CAL C&quot;</span>] - <span class="n">25</span>) &lt;= <span class="n">3</span>:
+</span><span class="row"><span class="ln">552</span>                verdict = <span class="s">&quot;\n\nResult: Compensate and Align are both exact on this rekordbox.&quot;</span>
+</span><span class="row"><span class="ln">553</span>            <span class="k">else</span>:
+</span><span class="row"><span class="ln">554</span>                verdict = (f&quot;\n\nResult: this rekordbox differs from the tested one. &quot;
+</span><span class="row"><span class="ln">555</span>                           f&quot;Try Fixed offset {shift[<span class="s">&#x27;CAL C&#x27;</span>]:.0f} ms, and please report it.&quot;)
+</span><span class="row"><span class="ln">556</span>        self.notify(APP_NAME, <span class="s">&quot;\n&quot;</span>.join(lines) + verdict)
+</span><span class="row"><span class="ln">557</span>
+</span><span class="row"><span class="ln">558</span>    <span class="k">def</span> find_ffmpeg(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">559</span>        self.ffmpeg, msg = encoder.find_ffmpeg(self.cfg.value(<span class="s">&quot;ffmpeg&quot;</span>) <span class="k">or</span> <span class="k">None</span>)
+</span><span class="row"><span class="ln">560</span>        self.statusBar().showMessage(msg <span class="k">if</span> self.ffmpeg <span class="k">else</span> <span class="s">&quot;⚠ &quot;</span> + msg.splitlines()[<span class="n">0</span>])
+</span><span class="row"><span class="ln">561</span>        self.log(msg)
+</span><span class="row"><span class="ln">562</span>
+</span><span class="row"><span class="ln">563</span>    <span class="k">def</span> choose_ffmpeg(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">564</span>        path, _ = QFileDialog.getOpenFileName(self, <span class="s">&quot;Choose ffmpeg&quot;</span>, <span class="s">&quot;&quot;</span>,
+</span><span class="row"><span class="ln">565</span>                                              <span class="s">&quot;ffmpeg (ffmpeg.exe ffmpeg);;All files (*)&quot;</span>)
+</span><span class="row"><span class="ln">566</span>        <span class="k">if</span> path:
+</span><span class="row"><span class="ln">567</span>            <span class="k">if</span> encoder.has_mp3_encoder(path):
+</span><span class="row"><span class="ln">568</span>                self.cfg.setValue(<span class="s">&quot;ffmpeg&quot;</span>, path)
+</span><span class="row"><span class="ln">569</span>                self.find_ffmpeg()
+</span><span class="row"><span class="ln">570</span>            <span class="k">else</span>:
+</span><span class="row"><span class="ln">571</span>                self.notify(APP_NAME, <span class="s">&quot;That ffmpeg has no MP3 encoder (libmp3lame).&quot;</span>)
+</span></pre></div></div><div class="sec" id="app-gui-py-8"><div class="expl"><h3>8. Small helpers: folders, log, help, saved settings</h3><p><span class="tag what">What</span> Folder pickers, the log, Help dialogs, and remembering options between runs (QSettings: the registry on Windows).</p><p><span class="tag why">Why</span> Convenience; nothing here affects the conversion itself.</p></div><div class="code"><pre><span class="row"><span class="ln">579</span>
+</span><span class="row"><span class="ln">580</span>    <span class="k">def</span> pick_folder(self, edit: QLineEdit) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">581</span>        d = QFileDialog.getExistingDirectory(self, <span class="s">&quot;Choose folder&quot;</span>, edit.text() <span class="k">or</span> <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">582</span>        <span class="k">if</span> d:
+</span><span class="row"><span class="ln">583</span>            edit.setText(d.replace(<span class="s">&quot;\\&quot;</span>, <span class="s">&quot;/&quot;</span>))
+</span><span class="row"><span class="ln">584</span>            self.update_summary()
+</span><span class="row"><span class="ln">585</span>
+</span><span class="row"><span class="ln">586</span>    <span class="k">def</span> open_dst(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">587</span>        plan = self.current_plan()
+</span><span class="row"><span class="ln">588</span>        <span class="k">if</span> plan <span class="k">and</span> os.path.isdir(plan.dst_root):
+</span><span class="row"><span class="ln">589</span>            QDesktopServices.openUrl(QUrl.fromLocalFile(plan.dst_root))
+</span><span class="row"><span class="ln">590</span>
+</span><span class="row"><span class="ln">591</span>    <span class="k">def</span> log(self, text: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">592</span>        self.log_view.appendPlainText(text)
+</span><span class="row"><span class="ln">593</span>
+</span><span class="row"><span class="ln">594</span>    <span class="c"># Every dialog goes through notify/ask. With CUECARRY_NO_DIALOGS set (the</span>
+</span><span class="row"><span class="ln">595</span>    <span class="c"># tests set it), they only write to the log, so a test can never hang on</span>
+</span><span class="row"><span class="ln">596</span>    <span class="c"># a dialog nobody can click.</span>
+</span><span class="row"><span class="ln">597</span>    <span class="k">def</span> notify(self, title: str, text: str) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">598</span>        <span class="k">if</span> os.environ.get(<span class="s">&quot;CUECARRY_NO_DIALOGS&quot;</span>):
+</span><span class="row"><span class="ln">599</span>            self.log(f&quot;[dialog] {title}: {text}&quot;)
+</span><span class="row"><span class="ln">600</span>            <span class="k">return</span>
+</span><span class="row"><span class="ln">601</span>        QMessageBox.information(self, title, text)
+</span><span class="row"><span class="ln">602</span>
+</span><span class="row"><span class="ln">603</span>    <span class="k">def</span> ask(self, title: str, text: str) -&gt; QMessageBox.StandardButton:
+</span><span class="row"><span class="ln">604</span>        <span class="k">if</span> os.environ.get(<span class="s">&quot;CUECARRY_NO_DIALOGS&quot;</span>):
+</span><span class="row"><span class="ln">605</span>            self.log(f&quot;[question, answered Yes] {title}: {text}&quot;)
+</span><span class="row"><span class="ln">606</span>            <span class="k">return</span> QMessageBox.Yes
+</span><span class="row"><span class="ln">607</span>        <span class="k">return</span> QMessageBox.question(self, title, text)
+</span><span class="row"><span class="ln">608</span>
+</span><span class="row"><span class="ln">609</span>    <span class="k">def</span> show_import_steps(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">610</span>        self.notify(<span class="s">&quot;Import into rekordbox&quot;</span>, IMPORT_STEPS)
+</span><span class="row"><span class="ln">611</span>
+</span><span class="row"><span class="ln">612</span>    <span class="k">def</span> show_about(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">613</span>        self.notify(f&quot;About {APP_NAME}&quot;, (
+</span><span class="row"><span class="ln">614</span>            f&quot;&lt;b&gt;{APP_NAME} {VERSION}&lt;/b&gt;&lt;br&gt;Makes an MP3 copy of a rekordbox library &quot;
+</span><span class="row"><span class="ln">615</span>            <span class="s">&quot;with cues, grids, ratings and playlists.&lt;br&gt;&lt;br&gt;&quot;</span>
+</span><span class="row"><span class="ln">616</span>            <span class="s">&quot;License: GNU GPL v3.0 or later (see LICENSE).&lt;br&gt;&quot;</span>
+</span><span class="row"><span class="ln">617</span>            <span class="s">&quot;Uses FFmpeg (LGPL build) and Qt for Python (LGPL). Their licenses are in &quot;</span>
+</span><span class="row"><span class="ln">618</span>            <span class="s">&quot;the LICENSES folder.&lt;br&gt;&quot;</span>
+</span><span class="row"><span class="ln">619</span>            <span class="s">&quot;rekordbox is a trademark of AlphaTheta Corporation. This app is not &quot;</span>
+</span><span class="row"><span class="ln">620</span>            <span class="s">&quot;affiliated with AlphaTheta.&quot;</span>))
+</span><span class="row"><span class="ln">621</span>
+</span><span class="row"><span class="ln">622</span>    <span class="k">def</span> _restore(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">623</span>        self.set_mode(self.cfg.value(<span class="s">&quot;mode&quot;</span>, <span class="s">&quot;compensate&quot;</span>))
+</span><span class="row"><span class="ln">624</span>        self.set_bitrate(self.cfg.value(<span class="s">&quot;bitrate&quot;</span>, <span class="s">&quot;320k&quot;</span>))
+</span><span class="row"><span class="ln">625</span>        self.jobs_spin.setValue(int(self.cfg.value(<span class="s">&quot;jobs&quot;</span>, core.Settings.jobs)))
+</span><span class="row"><span class="ln">626</span>        self.offset_spin.setValue(float(self.cfg.value(<span class="s">&quot;offset_ms&quot;</span>, <span class="n">0.0</span>)))
+</span><span class="row"><span class="ln">627</span>        self.src_edit.setText(self.cfg.value(<span class="s">&quot;src&quot;</span>, <span class="s">&quot;&quot;</span>))
+</span><span class="row"><span class="ln">628</span>        self.dst_edit.setText(self.cfg.value(<span class="s">&quot;dst&quot;</span>, <span class="s">&quot;&quot;</span>))
+</span><span class="row"><span class="ln">629</span>        last = self.cfg.value(<span class="s">&quot;xml&quot;</span>, <span class="s">&quot;&quot;</span>)
+</span><span class="row"><span class="ln">630</span>        <span class="k">if</span> last <span class="k">and</span> os.path.exists(last):
+</span><span class="row"><span class="ln">631</span>            self.open_xml(last)
+</span><span class="row"><span class="ln">632</span>
+</span><span class="row"><span class="ln">633</span>    <span class="k">def</span> _save(self) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">634</span>        <span class="k">for</span> k, v <span class="k">in</span> [(<span class="s">&quot;mode&quot;</span>, self.mode()), (<span class="s">&quot;bitrate&quot;</span>, self.bitrate_combo.currentText()),
+</span><span class="row"><span class="ln">635</span>                     (<span class="s">&quot;jobs&quot;</span>, self.jobs_spin.value()), (<span class="s">&quot;offset_ms&quot;</span>, self.offset_spin.value()),
+</span><span class="row"><span class="ln">636</span>                     (<span class="s">&quot;src&quot;</span>, self.src_edit.text()), (<span class="s">&quot;dst&quot;</span>, self.dst_edit.text()),
+</span><span class="row"><span class="ln">637</span>                     (<span class="s">&quot;xml&quot;</span>, self.xml_edit.text())]:
+</span><span class="row"><span class="ln">638</span>            self.cfg.setValue(k, v)
+</span><span class="row"><span class="ln">639</span>
+</span><span class="row"><span class="ln">640</span>    <span class="k">def</span> closeEvent(self, ev) -&gt; <span class="k">None</span>:
+</span><span class="row"><span class="ln">641</span>        <span class="k">if</span> self.worker <span class="k">and</span> self.worker.is_alive():
+</span><span class="row"><span class="ln">642</span>            <span class="k">if</span> self.ask(APP_NAME, <span class="s">&quot;A conversion is running. Stop it and quit?&quot;</span>) \
+</span><span class="row"><span class="ln">643</span>                    != QMessageBox.Yes:
+</span><span class="row"><span class="ln">644</span>                ev.ignore()
+</span><span class="row"><span class="ln">645</span>                <span class="k">return</span>
+</span><span class="row"><span class="ln">646</span>            self.worker.stop()
+</span><span class="row"><span class="ln">647</span>            self.worker.join(timeout=<span class="n">10</span>)
+</span><span class="row"><span class="ln">648</span>        self._save()
+</span><span class="row"><span class="ln">649</span>        ev.accept()
+</span><span class="row"><span class="ln">650</span>
+</span><span class="row"><span class="ln">651</span>
+</span><span class="row"><span class="ln">652</span><span class="k">def</span> main(argv: Optional[List[str]] = <span class="k">None</span>) -&gt; int:
+</span><span class="row"><span class="ln">653</span>    app = QApplication(argv <span class="k">if</span> argv <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">else</span> sys.argv)
+</span><span class="row"><span class="ln">654</span>    app.setApplicationName(APP_NAME)
+</span><span class="row"><span class="ln">655</span>    w = MainWindow()
+</span><span class="row"><span class="ln">656</span>    w.show()
+</span><span class="row"><span class="ln">657</span>    <span class="k">return</span> app.exec()
 </span></pre></div></div></section><section class="file" id="app-cli-py"><h2>app/cli.py</h2><p class="dim">Command line</p><div class="intro"><pre class="doc">cli.py - the command-line front end (same engine as the window).
 
 Run:  python -m app collection.xml --compensate
@@ -1285,7 +1328,7 @@ C++ reading notes
 </span><span class="row"><span class="ln">118</span>            print(<span class="s">&quot;\nStopped. Run the same command again to continue.&quot;</span>)
 </span><span class="row"><span class="ln">119</span>            <span class="k">return</span> <span class="n">130</span>
 </span><span class="row"><span class="ln">120</span>    n_tracks, n_pl = core.write_xml(lib, plan, s,
-</span><span class="row"><span class="ln">121</span>                                    <span class="k">lambda</span> p: encoder.audio_codec(ffmpeg, p) == <span class="s">&quot;alac&quot;</span>)
+</span><span class="row"><span class="ln">121</span>                                    <span class="k">lambda</span> p: encoder.is_alac(ffmpeg, p))
 </span><span class="row"><span class="ln">122</span>    print(f&quot;\nWrote {plan.out_xml}: {n_tracks} tracks, {n_pl} playlists.&quot;)
 </span><span class="row"><span class="ln">123</span>    <span class="k">if</span> result.failures:
 </span><span class="row"><span class="ln">124</span>        log = os.path.splitext(plan.out_xml)[<span class="n">0</span>] + <span class="s">&quot;_failures.txt&quot;</span>

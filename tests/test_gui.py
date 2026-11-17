@@ -14,7 +14,7 @@ pytest.importorskip("PySide6")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QCoreApplication, Qt          # noqa: E402
-from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QApplication              # noqa: E402
 
 from app import gui                                      # noqa: E402
 from tests.test_engine import library                    # noqa: E402,F401  (fixture)
@@ -39,7 +39,7 @@ def wait_until(cond, timeout=60):
 
 def test_window_converts_a_playlist(qapp, library, monkeypatch, tmp_path):
     tmp, xml, music = library
-    monkeypatch.setattr(QMessageBox, "exec", lambda self: 0)       # no modal popups
+    monkeypatch.setenv("CUECARRY_NO_DIALOGS", "1")                 # no modal popups
     monkeypatch.setenv("CUECARRY_SETTINGS", str(tmp_path / "settings.ini"))
     w = gui.MainWindow()
     w.resize(1200, 780)
@@ -61,8 +61,9 @@ def test_window_converts_a_playlist(qapp, library, monkeypatch, tmp_path):
     assert w.checked_playlists() == {"Set"}
     w.preview()
     w.start()
-    assert wait_until(lambda: not w.worker.is_alive() and w.start_btn.isEnabled())
-    assert os.path.exists(os.path.join(music + " MP3", "A", "flac track.mp3"))
+    log = w.log_view.toPlainText
+    assert wait_until(lambda: not w.worker.is_alive() and w.start_btn.isEnabled()), log()
+    assert os.path.exists(os.path.join(music + " MP3", "A", "flac track.mp3")), log()
     assert "Done." in w.log_view.toPlainText()
     os.makedirs(DOCS, exist_ok=True)
     w.grab().save(os.path.join(DOCS, "screenshot-test-library.png"))

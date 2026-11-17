@@ -140,7 +140,10 @@ From source, use `py -m app` in place of `cuecarry-cli.exe`.
 2. **Build**
    - a. Double-click `packaging\build_windows.bat`.
    - b. It installs the packages into a private `.venv-build` folder, downloads an LGPL build of ffmpeg (the first time only), checks that it can make MP3s, runs the tests, builds with PyInstaller, and zips the result.
-3. **Find the result**
+3. **If the tests fail**
+   - a. The build stops before making the app, and the full test output is in `test-log.txt` in the project folder.
+   - b. To build anyway, run `packaging\build_windows.bat -SkipTests` from a terminal.
+4. **Find the result**
    - a. The app: `dist\CueCarry\CueCarry.exe`.
    - b. The zip to share: `dist\CueCarry-<version>-windows.zip`.
 

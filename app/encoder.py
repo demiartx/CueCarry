@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
@@ -97,6 +98,14 @@ def audio_codec(ffmpeg: str, path: str) -> str:
         return ""
     m = re.search(r"Audio:\s*([A-Za-z0-9_]+)", r.stderr)
     return m.group(1).lower() if m else ""
+
+
+def is_alac(ffmpeg: str, path: str) -> bool:
+    """True only if the file is readable and holds ALAC; never raises."""
+    try:
+        return audio_codec(ffmpeg, path) == "alac"
+    except Exception:   # noqa: BLE001
+        return False
 
 
 # =============================================================================
@@ -211,6 +220,14 @@ class Runner:
         return p.returncode, err.decode("utf-8", "replace").strip()
 
     def _one(self, job: Job) -> str:
+        """Encode one track. Any error becomes a "FAIL ..." status for that
+        track instead of stopping the whole run."""
+        try:
+            return self._encode(job)
+        except Exception as e:   # noqa: BLE001 - reported per track
+            return f"FAIL {type(e).__name__}: {e}"
+
+    def _encode(self, job: Job) -> str:
         if self.cancel.is_set():
             return "cancelled"
         if not os.path.exists(job.track.path):
@@ -225,10 +242,10 @@ class Runner:
             if self.cancel.is_set():
                 break
             if code == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0:
-                os.replace(tmp, job.dst)
+                _retry(os.replace, tmp, job.dst)
                 return "ok"
         if os.path.exists(tmp):
-            os.remove(tmp)
+            _retry(os.remove, tmp)
         if self.cancel.is_set():
             return "cancelled"
         return "FAIL " + (err.splitlines()[-1] if err else "ffmpeg failed")
@@ -256,6 +273,19 @@ class Runner:
             list(ex.map(work, todo))
         self.result.cancelled = self.cancel.is_set()
         return self.result
+
+
+def _retry(fn, *args, tries: int = 20, wait: float = 0.25):
+    """Windows can briefly lock a file that was just written (antivirus
+    scanning, the search indexer). Retry a rename or delete for ~5 seconds,
+    like a C++ loop around MoveFileEx that sleeps on ERROR_SHARING_VIOLATION."""
+    for i in range(tries):
+        try:
+            return fn(*args)
+        except PermissionError:
+            if i == tries - 1:
+                raise
+            time.sleep(wait)
 
 
 def write_failures(path: str, failures: List[tuple]) -> None:
