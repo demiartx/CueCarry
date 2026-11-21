@@ -81,9 +81,56 @@ Your original files and your rekordbox collection are never changed. The app wri
 | Options | XML only | Rewrites the XML from existing MP3s without encoding |
 | Options | Skip tracks that are in no playlist | Converts only tracks that are in at least one playlist |
 | Options | MP3 bitrate | 320 (default), 256 or 192 kbps, constant bitrate |
+| Options | Match track loudness | Optional: gently bring lossless conversions into a loudness range, with peak protection. Off by default |
 | Tools | Make calibration tracks / Check calibration results | Measures cue timing on your own rekordbox (see [Cue timing](#cue-timing)) |
 | Tools | Choose ffmpeg | Use a different ffmpeg than the bundled one |
 | Help | How to import into rekordbox | The import steps above |
+
+## Optional track loudness matching
+
+Check **Match track loudness** to reduce large volume jumps between converted
+tracks. Start with **-12 to -8 LUFS**, a practical starting range to audition with
+your music and decks. The range is adjustable; it is not a DJ loudness standard.
+Using a fixed range keeps results consistent when you convert different playlists.
+
+| Track loudness | What happens with the default range |
+|---|---|
+| -16 LUFS | Raised toward -12 LUFS, if peaks leave enough room |
+| -10 LUFS | Keeps its original gain, unless peaks need more headroom |
+| -6 LUFS | Reduced toward -8 LUFS |
+| -22 LUFS | Boost capped at 6 dB; may still need some manual trim |
+
+Each track gets one fixed gain change, capped at **6 dB up or down**. There is no
+compression, limiting, or changing volume during a track. Tracks with strong
+transients may have too little headroom to reach the range safely. The log shows
+the applied gain, achieved loudness, and when a cap or peak limit prevents matching.
+Silence and audio with no measurable integrated loudness receive no loudness boost.
+
+The default peak ceiling is **-1 dBTP**. CueCarry measures the resampled audio,
+then decodes and checks the finished MP3's peaks and length before publishing it.
+If encoding adds peaks, it retries with slightly less gain from the original
+lossless file. If it cannot verify the result within the adjustment cap, it
+reports a failure and preserves the previous MP3. This cannot repair distortion
+or clipping already present in a source recording.
+
+Only **FLAC, WAV, AIFF and confirmed ALAC conversions** are matched. Existing
+MP3/AAC tracks stay unchanged, so a mixed library will not be fully matched.
+Original audio and the original collection XML stay untouched.
+
+With matching enabled, the default output folder is **`<source folder> MP3 Matched`**.
+You can still choose another folder. Preview lists the work; measurement runs during
+Start and takes extra time. Stop also cancels analysis and verification.
+The small `.mp3.cuecarry.json` files beside matched MP3s let CueCarry check settings
+and file fingerprints before reusing a conversion. Keep them with your outputs.
+Changing the range, timing, bitrate, or source triggers conversion again for
+recognized matched outputs. Existing files with missing or unrecognized records
+require another output folder or **Re-encode MP3s that already exist**. Matching cannot be
+combined with **XML only**, since it needs to process audio.
+
+Test one playlist on your decks first. Player auto-gain and ReplayGain can change
+playback level again; compare with auto-gain disabled when judging the result.
+CueCarry removes stale ReplayGain/Sound Check gain tags from matched copies.
+You may still need trim for different arrangements, EQ, and intentional dynamics.
 
 ## Cue timing
 
@@ -119,10 +166,15 @@ cuecarry-cli.exe collection.xml --dry-run
 cuecarry-cli.exe collection.xml --playlist "My Test Playlist"
 cuecarry-cli.exe collection.xml --align --overwrite
 cuecarry-cli.exe collection.xml --out "D:\rekordbox\mp3 playlists.xml"
+cuecarry-cli.exe collection.xml --normalize --playlist "My Test Playlist"
+cuecarry-cli.exe collection.xml --normalize --loudness-low -13 --loudness-high -7
 cuecarry-cli.exe --help
 ```
 
 From source, use `py -m app` in place of `cuecarry-cli.exe`.
+
+For matching, `--true-peak` sets the peak ceiling (default -1 dBTP), and
+`--max-boost` / `--max-cut` set the adjustment caps (default 6 dB each).
 
 ## Troubleshooting
 

@@ -71,8 +71,10 @@ class Worker(threading.Thread):
         super().__init__(daemon=True)
         self.ffmpeg, self.lib, self.plan, self.s, self.bridge = ffmpeg, lib, plan, s, bridge
         self.runner: Optional[encoder.Runner] = None
+        self.cancel = threading.Event()
 
     def stop(self) -> None:
+        self.cancel.set()
         if self.runner:
             self.runner.stop()
 
@@ -81,12 +83,14 @@ class Worker(threading.Thread):
         try:
             if not self.s.xml_only:
                 self.runner = encoder.Runner(self.ffmpeg, self.plan, self.s,
-                                             self.bridge.progress.emit)
+                                             self.bridge.progress.emit, self.cancel)
                 out["result"] = self.runner.run()
+            out["result"].cancelled = self.cancel.is_set()
             if not out["result"].cancelled:
                 self.bridge.message.emit("Writing the XML…")
                 n, p = core.write_xml(self.lib, self.plan, self.s,
-                                      lambda f: encoder.is_alac(self.ffmpeg, f))
+                                      lambda f: encoder.is_alac(self.ffmpeg, f),
+                                      lambda f: encoder.is_aac(self.ffmpeg, f))
                 out["tracks"], out["playlists"] = n, p
                 if out["result"].failures:
                     log = os.path.splitext(self.plan.out_xml)[0] + "_failures.txt"
@@ -202,6 +206,30 @@ class MainWindow(QMainWindow):
             ef.addRow(c)
         rv.addWidget(enc)
 
+        matching = QGroupBox("Track loudness (optional)")
+        mf = QFormLayout(matching)
+        self.flag_boxes["normalize"] = QCheckBox("Match track loudness")
+        self.flag_boxes["normalize"].toggled.connect(lambda on: self.set_flag("normalize", on))
+        mf.addRow(self.flag_boxes["normalize"])
+        self.loudness_low_spin = QDoubleSpinBox(minimum=-30, maximum=-5, decimals=1,
+                                                value=-12, suffix=" LUFS")
+        self.loudness_high_spin = QDoubleSpinBox(minimum=-30, maximum=-5, decimals=1,
+                                                 value=-8, suffix=" LUFS")
+        self.peak_spin = QDoubleSpinBox(minimum=-6, maximum=-0.5, decimals=1,
+                                        value=-1, suffix=" dBTP")
+        mf.addRow("Bring quiet tracks up to", self.loudness_low_spin)
+        mf.addRow("Bring loud outliers down to", self.loudness_high_spin)
+        mf.addRow("Peak ceiling", self.peak_spin)
+        for spin in (self.loudness_low_spin, self.loudness_high_spin, self.peak_spin):
+            spin.setEnabled(False)
+            spin.valueChanged.connect(lambda *_: self.update_summary())
+        explanation = QLabel("Keeps tracks within the range at their original gain unless peaks need "
+                             "headroom. Fixed gain, up to 6 dB either way. "
+                             "Lossless conversions only; existing MP3/AAC stays unchanged.")
+        explanation.setWordWrap(True)
+        mf.addRow(explanation)
+        rv.addWidget(matching)
+
         self.summary = QLabel("Open a collection XML to begin.")
         self.summary.setWordWrap(True)
         self.summary.setTextFormat(Qt.RichText)
@@ -265,7 +293,7 @@ class MainWindow(QMainWindow):
 
         m = mb.addMenu("&Options")
         self.flag_actions = {}
-        for key in ("overwrite", "xml_only", "only_playlists"):
+        for key in ("overwrite", "xml_only", "only_playlists", "normalize"):
             act = QAction(self.flag_boxes[key].text(), self, checkable=True)
             act.triggered.connect(lambda on, k=key: self.set_flag(k, on))
             m.addAction(act)
@@ -318,6 +346,11 @@ class MainWindow(QMainWindow):
         box.blockSignals(False)
         if hasattr(self, "flag_actions"):
             self.flag_actions[key].setChecked(on)
+        if key == "normalize":
+            for spin in (self.loudness_low_spin, self.loudness_high_spin, self.peak_spin):
+                spin.setEnabled(on)
+            self.dst_edit.setPlaceholderText('Default: source folder + " MP3 Matched"' if on
+                                             else 'Default: source folder + " MP3"')
         self.update_summary()
 
     def set_bitrate(self, br: str) -> None:
@@ -398,7 +431,10 @@ class MainWindow(QMainWindow):
             mode=self.mode(), offset_ms=self.offset_spin.value(),
             bitrate=self.bitrate_combo.currentText(), jobs=self.jobs_spin.value(),
             overwrite=self.flag_boxes["overwrite"].isChecked(),
-            xml_only=self.flag_boxes["xml_only"].isChecked())
+            xml_only=self.flag_boxes["xml_only"].isChecked(),
+            normalize=self.flag_boxes["normalize"].isChecked(),
+            loudness_low=self.loudness_low_spin.value(),
+            loudness_high=self.loudness_high_spin.value(), true_peak=self.peak_spin.value())
 
     def current_plan(self) -> Optional[core.Plan]:
         if not self.lib:
@@ -416,7 +452,7 @@ class MainWindow(QMainWindow):
         plan = self.current_plan()
         if not plan:
             return
-        todo = 0 if s.xml_only else len(plan.todo(s.overwrite))
+        todo = 0 if s.xml_only else len(plan.todo(s.overwrite, s))
         scope = (f"{len(s.playlists)} checked playlist(s)" if s.playlists
                  else "tracks in any playlist" if s.only_playlists else "the whole collection")
         self.summary.setText(
@@ -426,7 +462,9 @@ class MainWindow(QMainWindow):
             f"Tracks to convert: <b>{len(plan.jobs)}</b> ({todo} to encode now)<br>"
             f"Already MP3, kept: {len(plan.keep)}<br>"
             f"Skipped: {len(plan.skipped)}<br>"
-            f"Timing: {core.MODE_LABELS[s.mode]}")
+            f"Timing: {core.MODE_LABELS[s.mode]}" +
+            (f"<br>Loudness: {s.loudness_low:g} to {s.loudness_high:g} LUFS; "
+             "analyzed and peak-checked during Start" if s.normalize else ""))
 
     # =========================================================================
     # 6. Preview, Start, Stop
@@ -443,9 +481,13 @@ class MainWindow(QMainWindow):
             return
         s = self.settings()
         self.log(f"--- Preview ---\nOutput XML: {plan.out_xml}")
-        for j in plan.todo(s.overwrite)[:15]:
+        if s.normalize:
+            self.log(f"Loudness range: {s.loudness_low:g} to {s.loudness_high:g} LUFS; "
+                     f"peak ceiling {s.true_peak:g} dBTP. Gain is measured during Start. "
+                     "Existing MP3/AAC stays unchanged.")
+        for j in plan.todo(s.overwrite, s)[:15]:
             self.log(f"  convert  {j.track.path}  →  {j.dst}")
-        more = len(plan.todo(s.overwrite)) - 15
+        more = len(plan.todo(s.overwrite, s)) - 15
         if more > 0:
             self.log(f"  … and {more} more")
         for t, why in plan.skipped[:15]:
@@ -465,7 +507,7 @@ class MainWindow(QMainWindow):
         plan = self.current_plan()
         if not plan:
             return
-        todo = 0 if s.xml_only else len(plan.todo(s.overwrite))
+        todo = 0 if s.xml_only else len(plan.todo(s.overwrite, s))
         if s.overwrite and todo > 50:
             if self.ask(APP_NAME, f"Re-encode {todo} tracks, including ones "
                                     "already converted?") != QMessageBox.Yes:
@@ -643,6 +685,10 @@ class MainWindow(QMainWindow):
         self.set_bitrate(self.cfg.value("bitrate", "320k"))
         self.jobs_spin.setValue(int(self.cfg.value("jobs", core.Settings.jobs)))
         self.offset_spin.setValue(float(self.cfg.value("offset_ms", 0.0)))
+        self.loudness_low_spin.setValue(float(self.cfg.value("loudness_low", -12)))
+        self.loudness_high_spin.setValue(float(self.cfg.value("loudness_high", -8)))
+        self.peak_spin.setValue(float(self.cfg.value("true_peak", -1)))
+        self.set_flag("normalize", self.cfg.value("normalize", False, type=bool))
         self.src_edit.setText(self.cfg.value("src", ""))
         self.dst_edit.setText(self.cfg.value("dst", ""))
         self.out_edit.setText(self.cfg.value("out", ""))
@@ -655,6 +701,11 @@ class MainWindow(QMainWindow):
                      ("jobs", self.jobs_spin.value()), ("offset_ms", self.offset_spin.value()),
                      ("src", self.src_edit.text()), ("dst", self.dst_edit.text()),
                      ("out", self.out_edit.text()), ("xml", self.xml_edit.text())]:
+            self.cfg.setValue(k, v)
+        for k, v in [("normalize", self.flag_boxes["normalize"].isChecked()),
+                     ("loudness_low", self.loudness_low_spin.value()),
+                     ("loudness_high", self.loudness_high_spin.value()),
+                     ("true_peak", self.peak_spin.value())]:
             self.cfg.setValue(k, v)
 
     def closeEvent(self, ev) -> None:

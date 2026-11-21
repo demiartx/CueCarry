@@ -17,12 +17,16 @@ C++ reading notes
 from __future__ import annotations
 
 import os
+import math
 import posixpath
 import re
+import tempfile
 import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set
+
+from . import outputs
 
 # =============================================================================
 # 1. Constants
@@ -83,12 +87,17 @@ def path_to_loc(p: str) -> str:
 
 
 def norm(p: str) -> str:
-    return p.replace("\\", "/").rstrip("/")
+    return posixpath.normpath(p.replace("\\", "/")).rstrip("/")
+
+
+def _path_key(p: str) -> str:
+    """Compare actual locations, including relative paths and directory links."""
+    return os.path.realpath(os.path.abspath(p)).replace("\\", "/").rstrip("/").casefold()
 
 
 def is_under(path: str, root: str) -> bool:
     """True if `path` is inside folder `root`. Case-insensitive, like Windows."""
-    a, b = norm(path).lower(), norm(root).lower()
+    a, b = _path_key(path), _path_key(root)
     return a == b or a.startswith(b + "/")
 
 
@@ -244,6 +253,12 @@ class Settings:
     jobs: int = max(1, (os.cpu_count() or 2) - 1)
     overwrite: bool = False
     xml_only: bool = False
+    normalize: bool = False
+    loudness_low: float = -12.0
+    loudness_high: float = -8.0
+    true_peak: float = -1.0
+    max_boost: float = 6.0
+    max_cut: float = 6.0
 
 
 @dataclass
@@ -262,8 +277,10 @@ class Plan:
     keep: List[Track]          # used at their current location
     skipped: List[tuple]       # (Track, reason)
 
-    def todo(self, overwrite: bool) -> List[Job]:
-        return [j for j in self.jobs if overwrite or not os.path.exists(j.dst)]
+    def todo(self, overwrite: bool, settings: Optional[Settings] = None) -> List[Job]:
+        if settings is None:
+            return [j for j in self.jobs if overwrite or not os.path.exists(j.dst)]
+        return [j for j in self.jobs if overwrite or not outputs.matches(j, settings)]
 
 
 def tracks_in_scope(lib: Library, s: Settings) -> Set[str]:
@@ -279,11 +296,28 @@ def tracks_in_scope(lib: Library, s: Settings) -> Set[str]:
 
 
 def make_plan(lib: Library, s: Settings) -> Plan:
+    if s.mode not in MODES:
+        raise ValueError("Please choose a valid cue timing mode.")
+    if s.jobs < 1 or s.trim_samples < 0:
+        raise ValueError("Worker count must be positive and trim samples cannot be negative.")
+    if not math.isfinite(s.offset_ms):
+        raise ValueError("The cue offset must be a finite number.")
+    values = (s.loudness_low, s.loudness_high, s.true_peak, s.max_boost, s.max_cut)
+    if not all(math.isfinite(v) for v in values):
+        raise ValueError("Loudness settings must be finite numbers.")
+    if not -30 <= s.loudness_low < s.loudness_high <= -5:
+        raise ValueError("Choose a loudness range between -30 and -5 LUFS, with the lower edge first.")
+    if not -6 <= s.true_peak <= -0.5 or not 0 <= s.max_boost <= 12 or not 0 <= s.max_cut <= 12:
+        raise ValueError("Choose peak headroom from -6 to -0.5 dBTP and adjustment caps from 0 to 12 dB.")
+    if s.normalize and s.xml_only:
+        raise ValueError("Turn off XML only to match track loudness; this option needs audio analysis and encoding.")
     convertible = [t for t in lib.tracks.values() if t.ext in LOSSLESS_EXTS | PROBE_EXTS]
     # Detect the source folder from the WHOLE collection, not just the chosen
     # playlists, so a test run and the full run put files in the same place.
-    src_root = norm(s.src_root) if s.src_root else detect_src_root([t.path for t in convertible])
-    dst_root = norm(s.dst_root) if s.dst_root else src_root + " MP3"
+    paths = [t.path for t in convertible] or [t.path for t in lib.tracks.values()]
+    src_root = (norm(s.src_root) if s.src_root else
+                detect_src_root(paths) or norm(os.path.dirname(os.path.abspath(lib.xml_path))))
+    dst_root = norm(s.dst_root) if s.dst_root else src_root + (" MP3 Matched" if s.normalize else " MP3")
     if is_under(dst_root, src_root):
         raise ValueError("The MP3 folder must not be inside the source folder.")
     if s.out_xml:
@@ -312,6 +346,20 @@ def make_plan(lib: Library, s: Settings) -> Plan:
         else:
             skipped.append((t, f"unsupported file type ({t.ext or 'none'})"))
     jobs.sort(key=lambda j: j.track.path.lower())
+    # Check before starting any workers: two source formats can share a stem,
+    # and a custom XML path must never replace audio (or an encoder's .part).
+    protected = {_path_key(t.path) for t in lib.tracks.values()}
+    protected.update((_path_key(lib.xml_path), _path_key(s.xml_path)))
+    output_paths = [out_xml, os.path.splitext(out_xml)[0] + "_failures.txt"]
+    output_paths.extend(p for j in jobs for p in (j.dst, j.dst + ".part", outputs.record_path(j.dst)))
+    seen: Set[str] = set()
+    for path in output_paths:
+        key = _path_key(path)
+        if key in protected:
+            raise ValueError(f"An output would replace a source file: {path}. Please choose another output location.")
+        if key in seen:
+            raise ValueError(f"More than one output uses the same path: {path}. Please give the tracks distinct filenames or choose another output XML.")
+        seen.add(key)
     return Plan(src_root, dst_root, out_xml, jobs, keep, skipped)
 
 
@@ -332,9 +380,9 @@ def mp3_sample_rate(source_rate: int) -> int:
     return 44100 if source_rate % 44100 == 0 else 48000
 
 
-def cue_shift_seconds(track: Track, s: Settings) -> float:
+def cue_shift_seconds(track: Track, s: Settings, sample_rate: Optional[int] = None) -> float:
     if s.mode == "compensate":
-        rate = mp3_sample_rate(int(float(track.element.get("SampleRate") or 44100)))
+        rate = sample_rate or mp3_sample_rate(int(float(track.element.get("SampleRate") or 44100)))
         return ENCODER_DELAY_SAMPLES / rate
     if s.mode == "offset":
         return s.offset_ms / 1000.0
@@ -357,14 +405,15 @@ def _shift(el: ET.Element, attr: str, sec: float) -> None:
         el.set(attr, f"{max(0.0, float(v) + sec):.3f}")
 
 
-def mp3_track_element(t: Track, mp3_path: str, shift: float, bitrate_kbps: int) -> ET.Element:
+def mp3_track_element(t: Track, mp3_path: str, shift: float, bitrate_kbps: int,
+                      sample_rate: Optional[int] = None) -> ET.Element:
     el = ET.Element("TRACK", dict(t.element.attrib))
     el.set("Kind", "MP3 File")
     el.set("Location", path_to_loc(mp3_path))
     el.set("BitRate", str(bitrate_kbps))
     el.set("Size", str(os.path.getsize(mp3_path)))
-    rate = int(float(t.element.get("SampleRate") or 44100))
-    el.set("SampleRate", str(mp3_sample_rate(rate)))
+    rate = sample_rate or mp3_sample_rate(int(float(t.element.get("SampleRate") or 44100)))
+    el.set("SampleRate", str(rate))
     for child in t.element:
         c = ET.SubElement(el, child.tag, dict(child.attrib))
         if shift:
@@ -396,7 +445,8 @@ def _copy_tree(node: PlaylistNode, keep_ids: Set[str], wanted: Set[str]) -> List
 
 
 def write_xml(lib: Library, plan: Plan, s: Settings,
-              is_alac: Callable[[str], bool]) -> tuple:
+              is_alac: Callable[[str], bool],
+              is_aac: Optional[Callable[[str], bool]] = None) -> tuple:
     """Write plan.out_xml. Returns (number of tracks, number of playlists).
 
     is_alac(path) decides .m4a files that were never converted: ALAC files
@@ -406,10 +456,13 @@ def write_xml(lib: Library, plan: Plan, s: Settings,
     tracks: List[ET.Element] = []
     ids: Set[str] = set()
     for j in plan.jobs:
-        if os.path.exists(j.dst):
-            tracks.append(mp3_track_element(j.track, j.dst, cue_shift_seconds(j.track, s), kbps))
+        if outputs.matches(j, s):
+            record = outputs.read_record(j.dst) if s.normalize else None
+            rate = record["sample_rate"] if record else None
+            tracks.append(mp3_track_element(j.track, j.dst, cue_shift_seconds(j.track, s, rate), kbps, rate))
             ids.add(j.track.track_id)
-        elif j.probe and os.path.exists(j.track.path) and not is_alac(j.track.path):
+        elif (j.probe and os.path.exists(j.track.path) and
+              (is_aac(j.track.path) if is_aac else not is_alac(j.track.path))):
             tracks.append(j.track.element)     # AAC: keep where it is
             ids.add(j.track.track_id)
     for t in plan.keep:
@@ -427,7 +480,15 @@ def write_xml(lib: Library, plan: Plan, s: Settings,
     folder.extend(kids)
     ET.indent(out)
     os.makedirs(os.path.dirname(plan.out_xml) or ".", exist_ok=True)
-    ET.ElementTree(out).write(plan.out_xml, encoding="UTF-8", xml_declaration=True)
+    # Publish only a complete XML, preserving the previous export on failure.
+    fd, tmp = tempfile.mkstemp(prefix=".cuecarry-", suffix=".xml", dir=os.path.dirname(plan.out_xml) or ".")
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            ET.ElementTree(out).write(stream, encoding="UTF-8", xml_declaration=True)
+        os.replace(tmp, plan.out_xml)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
     return len(tracks), _count_playlists(kids)
 
 
