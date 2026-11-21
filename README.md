@@ -173,6 +173,13 @@ py -m pytest -q                                 # tests (needs ffmpeg with libmp
 
 Every source file is split into numbered sections with **What / Why / If it goes wrong** headers.
 
+## Development notes
+
+See [the review and optional loudness matching plan](docs/REVIEW_AND_NORMALIZATION.md)
+for small safety improvements, suggested follow-ups, and a proposed way to reduce
+track-to-track trim adjustments. Loudness matching is a future option; it is not
+enabled or implemented in this pass.
+
 ## Licenses
 
 - **CueCarry:** GNU General Public License v3.0 or later. See [`LICENSE`](LICENSE). You can share and modify it; modified versions you distribute must stay under the GPL with their source available.

@@ -71,8 +71,10 @@ class Worker(threading.Thread):
         super().__init__(daemon=True)
         self.ffmpeg, self.lib, self.plan, self.s, self.bridge = ffmpeg, lib, plan, s, bridge
         self.runner: Optional[encoder.Runner] = None
+        self.cancel = threading.Event()
 
     def stop(self) -> None:
+        self.cancel.set()
         if self.runner:
             self.runner.stop()
 
@@ -81,8 +83,9 @@ class Worker(threading.Thread):
         try:
             if not self.s.xml_only:
                 self.runner = encoder.Runner(self.ffmpeg, self.plan, self.s,
-                                             self.bridge.progress.emit)
+                                             self.bridge.progress.emit, self.cancel)
                 out["result"] = self.runner.run()
+            out["result"].cancelled = self.cancel.is_set()
             if not out["result"].cancelled:
                 self.bridge.message.emit("Writing the XML…")
                 n, p = core.write_xml(self.lib, self.plan, self.s,

@@ -81,7 +81,11 @@ def settings_from(a) -> core.Settings:
 def main(argv=None) -> int:
     a = parse_args(argv if argv is not None else sys.argv[1:])
     s = settings_from(a)
-    lib = core.load_library(s.xml_path)
+    try:
+        lib = core.load_library(s.xml_path)
+    except (OSError, ValueError, core.ET.ParseError) as e:
+        print(f"Could not open the collection XML: {e}", file=sys.stderr)
+        return 2
     if s.playlists:
         missing = s.playlists - {p.name for p in lib.playlists()}
         if missing:

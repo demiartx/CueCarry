@@ -212,13 +212,17 @@ class Runner:
                     pass
 
     def _run_cmd(self, cmd: List[str]) -> tuple:
-        p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                             creationflags=NO_WINDOW)
         with self.lock:
+            if self.cancel.is_set():
+                return -1, "cancelled"
+            p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                 creationflags=NO_WINDOW)
             self.procs.add(p)
-        _, err = p.communicate()
-        with self.lock:
-            self.procs.discard(p)
+        try:
+            _, err = p.communicate()
+        finally:
+            with self.lock:
+                self.procs.discard(p)
         return p.returncode, err.decode("utf-8", "replace").strip()
 
     def _one(self, job: Job) -> str:

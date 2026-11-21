@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import posixpath
 import re
+import tempfile
 import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -83,12 +84,17 @@ def path_to_loc(p: str) -> str:
 
 
 def norm(p: str) -> str:
-    return p.replace("\\", "/").rstrip("/")
+    return posixpath.normpath(p.replace("\\", "/")).rstrip("/")
+
+
+def _path_key(p: str) -> str:
+    """Compare actual locations, including relative paths and directory links."""
+    return os.path.realpath(os.path.abspath(p)).replace("\\", "/").rstrip("/").casefold()
 
 
 def is_under(path: str, root: str) -> bool:
     """True if `path` is inside folder `root`. Case-insensitive, like Windows."""
-    a, b = norm(path).lower(), norm(root).lower()
+    a, b = _path_key(path), _path_key(root)
     return a == b or a.startswith(b + "/")
 
 
@@ -279,6 +285,10 @@ def tracks_in_scope(lib: Library, s: Settings) -> Set[str]:
 
 
 def make_plan(lib: Library, s: Settings) -> Plan:
+    if s.mode not in MODES:
+        raise ValueError("Please choose a valid cue timing mode.")
+    if s.jobs < 1 or s.trim_samples < 0:
+        raise ValueError("Worker count must be positive and trim samples cannot be negative.")
     convertible = [t for t in lib.tracks.values() if t.ext in LOSSLESS_EXTS | PROBE_EXTS]
     # Detect the source folder from the WHOLE collection, not just the chosen
     # playlists, so a test run and the full run put files in the same place.
@@ -312,6 +322,20 @@ def make_plan(lib: Library, s: Settings) -> Plan:
         else:
             skipped.append((t, f"unsupported file type ({t.ext or 'none'})"))
     jobs.sort(key=lambda j: j.track.path.lower())
+    # Check before starting any workers: two source formats can share a stem,
+    # and a custom XML path must never replace audio (or an encoder's .part).
+    protected = {_path_key(t.path) for t in lib.tracks.values()}
+    protected.update((_path_key(lib.xml_path), _path_key(s.xml_path)))
+    outputs = [out_xml, os.path.splitext(out_xml)[0] + "_failures.txt"]
+    outputs.extend(p for j in jobs for p in (j.dst, j.dst + ".part"))
+    seen: Set[str] = set()
+    for path in outputs:
+        key = _path_key(path)
+        if key in protected:
+            raise ValueError(f"An output would replace a source file: {path}. Please choose another output location.")
+        if key in seen:
+            raise ValueError(f"More than one output uses the same path: {path}. Please give the tracks distinct filenames or choose another output XML.")
+        seen.add(key)
     return Plan(src_root, dst_root, out_xml, jobs, keep, skipped)
 
 
@@ -427,7 +451,15 @@ def write_xml(lib: Library, plan: Plan, s: Settings,
     folder.extend(kids)
     ET.indent(out)
     os.makedirs(os.path.dirname(plan.out_xml) or ".", exist_ok=True)
-    ET.ElementTree(out).write(plan.out_xml, encoding="UTF-8", xml_declaration=True)
+    # Publish only a complete XML, preserving the previous export on failure.
+    fd, tmp = tempfile.mkstemp(prefix=".cuecarry-", suffix=".xml", dir=os.path.dirname(plan.out_xml) or ".")
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            ET.ElementTree(out).write(stream, encoding="UTF-8", xml_declaration=True)
+        os.replace(tmp, plan.out_xml)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
     return len(tracks), _count_playlists(kids)
 
 

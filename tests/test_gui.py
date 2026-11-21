@@ -90,3 +90,20 @@ def test_window_output_xml_location(qapp, library, monkeypatch, tmp_path):
     w2 = gui.MainWindow()
     assert w2.out_edit.text() == out                                        # remembered
     w2.close()
+
+
+def test_stop_before_worker_start_preserves_previous_xml(qapp, tmp_path):
+    """Stop can arrive before Worker.run has created its Runner."""
+    from tests.test_safety import make_library
+
+    lib, settings = make_library(tmp_path, ["track.flac"])
+    plan = gui.core.make_plan(lib, settings)
+    out = tmp_path / "Music MP3" / gui.core.DEFAULT_OUT_NAME
+    out.parent.mkdir()
+    out.write_bytes(b"previous export")
+    worker = gui.Worker("unused-ffmpeg", lib, plan, settings, gui.Bridge())
+    worker.stop()
+    worker.run()
+    assert worker.runner.result.cancelled
+    assert out.read_bytes() == b"previous export"
+    assert not (out.parent / "track.mp3").exists()
