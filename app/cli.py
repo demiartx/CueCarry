@@ -35,7 +35,7 @@ def parse_args(argv):
                                  "ratings and playlists.")
     ap.add_argument("xml", help="rekordbox collection XML (File > Export Collection in xml format)")
     ap.add_argument("--src-root", help="top folder of the source library (default: detected)")
-    ap.add_argument("--dst-root", help='top folder for the MP3 copy (default: "<src-root> MP3")')
+    ap.add_argument("--dst-root", help='MP3 folder (default: "<src-root> MP3", or "<src-root> MP3 Matched" with --normalize)')
     ap.add_argument("--out", help="output XML file, or a folder to put rekordbox_mp3.xml in "
                                   "(default: <dst-root>/rekordbox_mp3.xml)")
     ap.add_argument("--playlist", action="append", default=[], help="only this playlist (repeatable)")
@@ -51,6 +51,18 @@ def parse_args(argv):
     ap.add_argument("--jobs", type=int, default=core.Settings.jobs)
     ap.add_argument("--overwrite", action="store_true", help="re-encode MP3s that already exist")
     ap.add_argument("--xml-only", action="store_true", help="don't encode; only rewrite the XML")
+    ap.add_argument("--normalize", action="store_true",
+                    help="gently match lossless track loudness; existing MP3/AAC stays unchanged")
+    ap.add_argument("--loudness-low", type=float, default=-12.0, metavar="LUFS",
+                    help="raise quiet tracks toward this level (default -12)")
+    ap.add_argument("--loudness-high", type=float, default=-8.0, metavar="LUFS",
+                    help="lower loud outliers toward this level (default -8)")
+    ap.add_argument("--true-peak", type=float, default=-1.0, metavar="DBTP",
+                    help="verified MP3 peak ceiling (default -1)")
+    ap.add_argument("--max-boost", type=float, default=6.0, metavar="DB",
+                    help="maximum constant boost (default 6)")
+    ap.add_argument("--max-cut", type=float, default=6.0, metavar="DB",
+                    help="maximum constant attenuation (default 6)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan and stop")
     ap.add_argument("--ffmpeg", help="path to ffmpeg (default: bundled copy, then PATH)")
     return ap.parse_args(argv)
@@ -67,7 +79,9 @@ def settings_from(a) -> core.Settings:
                          playlists=set(a.playlist), only_playlists=a.only_playlists, mode=mode,
                          offset_ms=a.offset_ms or 0.0, trim_samples=a.trim_samples,
                          bitrate=a.bitrate, jobs=a.jobs, overwrite=a.overwrite,
-                         xml_only=a.xml_only)
+                         xml_only=a.xml_only, normalize=a.normalize,
+                         loudness_low=a.loudness_low, loudness_high=a.loudness_high,
+                         true_peak=a.true_peak, max_boost=a.max_boost, max_cut=a.max_cut)
 
 
 # =============================================================================
@@ -96,11 +110,16 @@ def main(argv=None) -> int:
     except ValueError as e:
         print(e, file=sys.stderr)
         return 2
-    todo = plan.todo(s.overwrite)
+    todo = plan.todo(s.overwrite, s)
     print(f"Source folder : {plan.src_root}\nMP3 folder    : {plan.dst_root}\nOutput XML    : {plan.out_xml}")
     print(f"To convert    : {len(plan.jobs)} ({len(todo)} to encode now)")
     print(f"Kept as-is    : {len(plan.keep)} MP3")
     print(f"Timing mode   : {core.MODE_LABELS[s.mode]}")
+    if s.normalize:
+        print(f"Loudness      : {s.loudness_low:g} to {s.loudness_high:g} LUFS; "
+              f"peak ceiling {s.true_peak:g} dBTP; max boost/cut {s.max_boost:g}/{s.max_cut:g} dB")
+        print("Only lossless conversions are matched. Existing MP3/AAC stays unchanged.")
+        print("Tracks inside the range keep their gain unless peak protection needs headroom.")
     if plan.skipped:
         t, why = plan.skipped[0]
         print(f"Skipped       : {len(plan.skipped)}, e.g. {t.path} ({why})")
@@ -123,7 +142,8 @@ def main(argv=None) -> int:
             print("\nStopped. Run the same command again to continue.")
             return 130
     n_tracks, n_pl = core.write_xml(lib, plan, s,
-                                    lambda p: encoder.is_alac(ffmpeg, p))
+                                    lambda p: encoder.is_alac(ffmpeg, p),
+                                    lambda p: encoder.is_aac(ffmpeg, p))
     print(f"\nWrote {plan.out_xml}: {n_tracks} tracks, {n_pl} playlists.")
     if result.failures:
         log = os.path.splitext(plan.out_xml)[0] + "_failures.txt"

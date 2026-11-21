@@ -107,3 +107,45 @@ def test_stop_before_worker_start_preserves_previous_xml(qapp, tmp_path):
     assert worker.runner.result.cancelled
     assert out.read_bytes() == b"previous export"
     assert not (out.parent / "track.mp3").exists()
+
+
+def test_window_matches_loudness_and_remembers_range(qapp, library, monkeypatch, tmp_path):
+    from app import outputs
+
+    _, xml, music = library
+    monkeypatch.setenv("CUECARRY_NO_DIALOGS", "1")
+    monkeypatch.setenv("CUECARRY_SETTINGS", str(tmp_path / "matching.ini"))
+    w = gui.MainWindow()
+    w.open_xml(xml)
+    w.src_edit.setText(music)
+    assert not w.settings().normalize
+    assert not w.loudness_low_spin.isEnabled()
+    w.flag_actions["normalize"].trigger()
+    assert w.flag_boxes["normalize"].isChecked()
+    assert w.loudness_low_spin.isEnabled()
+    w.loudness_low_spin.setValue(-13)
+    w.loudness_high_spin.setValue(-7)
+    w.peak_spin.setValue(-1.5)
+    root = w.tree.invisibleRootItem()
+    item = next(root.child(i) for i in range(root.childCount()) if root.child(i).text(0) == "Set")
+    item.setCheckState(0, Qt.Checked)
+    plan = w.current_plan()
+    assert plan.dst_root.endswith(" MP3 Matched")
+    w.preview()
+    assert "Gain is measured during Start" in w.log_view.toPlainText()
+    w.start()
+    assert wait_until(lambda: not w.worker.is_alive() and w.start_btn.isEnabled()), w.log_view.toPlainText()
+    assert "Done." in w.log_view.toPlainText()
+    assert "0 failed" in w.log_view.toPlainText()
+    assert all(outputs.matches(job, w.settings()) for job in plan.jobs)
+    assert not os.path.exists(music + " MP3")
+    w.close()
+    w2 = gui.MainWindow()
+    assert w2.settings().normalize
+    assert w2.loudness_low_spin.value() == -13
+    assert w2.loudness_high_spin.value() == -7
+    assert w2.peak_spin.value() == -1.5
+    w2.set_flag("xml_only", True)
+    assert w2.current_plan() is None
+    assert "Turn off XML only" in w2.summary.text()
+    w2.close()

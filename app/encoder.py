@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 # Imported from the submodule on purpose: on Python 3.15, once PySide6 is loaded,
@@ -31,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
 from .core import ENCODER_DELAY_SAMPLES, Job, Plan, Settings, mp3_sample_rate
+from . import loudness, outputs
 
 # On Windows, stop every ffmpeg run from flashing a console window.
 NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
@@ -89,7 +91,7 @@ def find_ffmpeg(preferred: Optional[str] = None) -> tuple:
 # What:  Read the codec name of an .m4a file (ALAC or AAC).
 # Why:   .m4a can hold lossless ALAC or lossy AAC. Converting AAC to MP3 would
 #        stack two lossy encodes, so AAC files are kept as they are.
-# If it goes wrong: an unreadable file counts as "not ALAC" and is kept as-is.
+# If it goes wrong: keep only confirmed AAC; unreadable files are failures.
 # =============================================================================
 
 def audio_codec(ffmpeg: str, path: str) -> str:
@@ -107,6 +109,14 @@ def is_alac(ffmpeg: str, path: str) -> bool:
     try:
         return audio_codec(ffmpeg, path) == "alac"
     except Exception:   # noqa: BLE001
+        return False
+
+
+def is_aac(ffmpeg: str, path: str) -> bool:
+    """Unknown/unreadable audio must never be imported as confirmed AAC."""
+    try:
+        return audio_codec(ffmpeg, path) == "aac"
+    except Exception:  # Match is_alac's per-track error isolation.
         return False
 
 
@@ -151,19 +161,35 @@ def tag_args(attrs: Dict[str, str]) -> List[str]:
     return args
 
 
-def ffmpeg_commands(ffmpeg: str, job: Job, s: Settings, tmp: str) -> List[List[str]]:
+def ffmpeg_commands(ffmpeg: str, job: Job, s: Settings, tmp: str,
+                    gain_db: Optional[float] = None, sample_rate: Optional[int] = None) -> List[List[str]]:
     attrs = job.track.element.attrib
     base = [ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i", job.track.path]
     audio = ["-c:a", "libmp3lame", "-b:a", s.bitrate, "-compression_level", "0",
              "-map_metadata", "0", "-id3v2_version", "3", "-write_id3v1", "1"]
-    rate = int(float(attrs.get("SampleRate") or 0) or 0)
-    if rate > 48000:
+    rate = sample_rate if sample_rate is not None else int(float(attrs.get("SampleRate") or 0) or 0)
+    if sample_rate is not None:
+        audio += ["-ar", str(rate)]
+    elif rate > 48000:
         audio += ["-ar", str(mp3_sample_rate(rate))]
-    if s.mode == "align":
+    if gain_db is not None:
+        filters = loudness.preprocessing(rate, s.mode, s.trim_samples)
+        filters.append(f"volume={gain_db:.8f}dB:precision=double")
+        audio += ["-af", ",".join(filters)]
+    elif s.mode == "align":
         audio += ["-af", f"atrim=start_sample={s.trim_samples},asetpts=PTS-STARTPTS"]
     if s.mode in ("compensate", "align"):
         audio += ["-write_xing", "0"]
-    tail = tag_args(attrs) + ["-f", "mp3", tmp]
+    gain_tags = []
+    if gain_db is not None:
+        # Gain tags describe the original master. Keeping them after applying
+        # gain can make a player apply an old correction a second time.
+        for key in ("REPLAYGAIN_TRACK_GAIN", "REPLAYGAIN_TRACK_PEAK", "REPLAYGAIN_ALBUM_GAIN",
+                    "REPLAYGAIN_ALBUM_PEAK", "REPLAYGAIN_REFERENCE_LOUDNESS",
+                    "R128_TRACK_GAIN", "R128_ALBUM_GAIN", "iTunNORM",
+                    "MP3GAIN_MINMAX", "MP3GAIN_ALBUM_MINMAX", "MP3GAIN_UNDO"):
+            gain_tags += ["-metadata", key + "="]
+    tail = tag_args(attrs) + gain_tags + ["-f", "mp3", tmp]
     with_art = ["-map", "0:a:0", "-map", "0:v?", "-c:v", "copy", "-disposition:v", "attached_pic"]
     no_art = ["-map", "0:a:0"]
     return [base + with_art + audio + tail, base + no_art + audio + tail]
@@ -230,6 +256,10 @@ class Runner:
         track instead of stopping the whole run."""
         try:
             return self._encode(job)
+        except InterruptedError:
+            if self.cancel.is_set():
+                return "cancelled"
+            return "FAIL audio processing was interrupted"
         except Exception as e:   # noqa: BLE001 - reported per track
             return f"FAIL {type(e).__name__}: {e}"
 
@@ -238,8 +268,14 @@ class Runner:
             return "cancelled"
         if not os.path.exists(job.track.path):
             return "FAIL source file missing"
-        if job.probe and audio_codec(self.ffmpeg, job.track.path) != "alac":
-            return "kept (AAC, already lossy)"
+        if self.s.normalize:
+            return self._encode_matched(job)
+        if job.probe:
+            codec = audio_codec(self.ffmpeg, job.track.path)
+            if codec == "aac":
+                return "kept (AAC, already lossy)"
+            if codec != "alac":
+                return "FAIL could not confirm ALAC or AAC audio"
         os.makedirs(os.path.dirname(job.dst), exist_ok=True)
         tmp = job.dst + ".part"
         err = ""
@@ -249,6 +285,8 @@ class Runner:
                 break
             if code == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0:
                 _retry(os.replace, tmp, job.dst)
+                if os.path.exists(outputs.record_path(job.dst)):
+                    _retry(os.remove, outputs.record_path(job.dst))
                 return "ok"
         if os.path.exists(tmp):
             _retry(os.remove, tmp)
@@ -256,8 +294,105 @@ class Runner:
             return "cancelled"
         return "FAIL " + (err.splitlines()[-1] if err else "ffmpeg failed")
 
+    def _probe_audio(self, path: str) -> tuple[str, int]:
+        _, text = self._run_cmd([self.ffmpeg, "-nostdin", "-hide_banner", "-i", path])
+        if self.cancel.is_set():
+            raise InterruptedError("cancelled")
+        match = re.search(r"Audio:\s*([A-Za-z0-9_]+)([^\r\n]*)", text)
+        properties = re.search(r",\s*(\d+) Hz,\s*(mono|stereo)(?:,|$)", match.group(2)) if match else None
+        if not properties:
+            raise ValueError("Could not read a mono or stereo audio stream safely.")
+        return match.group(1).lower(), int(properties.group(1))
+
+    def _measure(self, path: str, filters: List[str]) -> loudness.Measurement:
+        code, text = self._run_cmd([
+            self.ffmpeg, "-nostdin", "-hide_banner", "-nostats", "-loglevel", "info",
+            "-xerror", "-err_detect", "explode", "-i", path, "-map", "0:a:0", "-vn",
+            "-af", loudness.measurement_filter(filters), "-f", "null", "-"])
+        if self.cancel.is_set():
+            raise InterruptedError("cancelled")
+        if code != 0:
+            raise ValueError("Audio could not be decoded completely for loudness verification.")
+        return loudness.parse_measurement(text)
+
+    def _encode_matched(self, job: Job) -> str:
+        """Analyze, adjust only outliers, then decode-check before publishing."""
+        s = self.s
+        source = outputs.fingerprint(job.track.path)
+        if os.path.exists(job.dst) and not s.overwrite:
+            previous = outputs.read_record(job.dst)
+            if (not previous or previous.get("version") != 1 or
+                    not isinstance(previous.get("source"), dict) or
+                    previous["source"].get("path") != source["path"]):
+                raise ValueError("Existing MP3 has no matching loudness record; choose another folder "
+                                 "or enable re-encoding existing MP3s.")
+        codec, source_rate = self._probe_audio(job.track.path)
+        if job.probe:
+            if codec == "aac":
+                return "kept (AAC, already lossy; loudness unchanged)"
+            if codec != "alac":
+                raise ValueError("Could not confirm ALAC or AAC audio.")
+        rate = mp3_sample_rate(source_rate)
+        # MPEG-1 rates support all offered bitrates. Lower-rate MPEG-2 MP3
+        # would silently clamp 192/256/320k to a lower bitrate.
+        if rate not in (32000, 44100, 48000):
+            rate = 44100 if source_rate % 11025 == 0 else 48000
+        before = self._measure(job.track.path, loudness.preprocessing(rate, s.mode, s.trim_samples))
+        gain, reason = loudness.choose_gain(before, s.loudness_low, s.loudness_high,
+                                            s.true_peak, s.max_boost, s.max_cut)
+        os.makedirs(os.path.dirname(job.dst) or ".", exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".cuecarry-", suffix=".mp3.part",
+                                   dir=os.path.dirname(job.dst) or ".")
+        os.close(fd)
+        try:
+            for attempt in range(3):
+                error = "ffmpeg failed"
+                for cmd in ffmpeg_commands(self.ffmpeg, job, s, tmp, gain, rate):
+                    code, error = self._run_cmd(cmd)
+                    if self.cancel.is_set():
+                        return "cancelled"
+                    if code == 0:
+                        break
+                else:
+                    raise ValueError(error.splitlines()[-1] if error else "ffmpeg failed")
+                after = self._measure(tmp, [f"aresample={rate}"])
+                # MP3 padding/delay can add up to two frames. Catch truncated
+                # or empty output without moving cues or trimming the music.
+                if abs(after.samples - before.samples) > 2304:
+                    raise ValueError("Decoded MP3 length did not match the source; output not published.")
+                if ((before.integrated is not None and after.integrated is None) or
+                        (before.peak is not None and after.peak is None)):
+                    raise ValueError("Encoded audio lost its measurable signal; output not published.")
+                if after.peak is None or after.peak <= s.true_peak:
+                    if self.cancel.is_set():
+                        return "cancelled"
+                    if outputs.fingerprint(job.track.path) != source:
+                        raise ValueError("Source changed during encoding; please retry.")
+                    record = {"version": 1, "source": source, "profile": outputs.profile(s),
+                              "tags": dict(job.track.element.attrib),
+                              "sample_rate": rate, "gain_db": gain, "reason": reason,
+                              "input_lufs": before.integrated, "output_lufs": after.integrated,
+                              "output_peak_dbtp": after.peak, "decoded_samples": after.samples}
+                    _retry(os.replace, tmp, job.dst)
+                    record["output"] = outputs.fingerprint(job.dst)
+                    outputs.publish_record(job.dst, record)
+                    level = (f"{after.integrated:.1f} LUFS" if after.integrated is not None
+                             else "silent/ungated audio")
+                    outside = (after.integrated is not None and
+                               not s.loudness_low - 0.2 <= after.integrated <= s.loudness_high + 0.2)
+                    return f"ok ({gain:+.1f} dB; {level}; {reason}" + (
+                        "; outside range, manual trim may help)" if outside else ")")
+                gain -= after.peak - s.true_peak + 0.15
+                reason += "; encoded peak protected"
+                if gain < -s.max_cut:
+                    break
+            raise ValueError("Could not meet the peak ceiling within the adjustment cap; output not published.")
+        finally:
+            if os.path.exists(tmp):
+                _retry(os.remove, tmp)
+
     def run(self) -> RunResult:
-        todo = self.plan.todo(self.s.overwrite)
+        todo = self.plan.todo(self.s.overwrite, self.s)
         total = len(todo)
 
         def work(job: Job) -> None:
@@ -266,7 +401,7 @@ class Runner:
                 if status == "cancelled":
                     return
                 self.result.done += 1
-                if status == "ok":
+                if status.startswith("ok"):
                     self.result.converted += 1
                 elif status.startswith("kept"):
                     self.result.kept_aac += 1
